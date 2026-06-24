@@ -5,6 +5,7 @@ import json
 import sys
 
 from sentineldeck import __version__
+from sentineldeck.reporters.badge import write_badge_svg, write_card_svg
 from sentineldeck.reporters.html_report import read_json_report, write_html_report
 from sentineldeck.reporters.json_report import write_json_report
 from sentineldeck.scanner import scan_domain
@@ -31,7 +32,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     report = subparsers.add_parser("report", help="Render a saved JSON scan report.")
     report.add_argument("source", help="Path to a SentinelDeck JSON report.")
-    report.add_argument("--html", required=True, help="Write an HTML report to this path.")
+    report.add_argument("--html", help="Write a client-ready HTML report to this path.")
+    report.add_argument("--svg", help="Write a shareable SVG score card to this path.")
+    report.add_argument("--badge", help="Write an embeddable SVG grade badge to this path.")
     return parser
 
 
@@ -55,9 +58,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "report":
+        if not (args.html or args.svg or args.badge):
+            print("error: choose at least one of --html, --svg, or --badge", file=sys.stderr)
+            return 2
         report = read_json_report(args.source)
-        path = write_html_report(report, args.html)
-        print(f"HTML report written: {path}")
+        if args.html:
+            print(f"HTML report written: {write_html_report(report, args.html)}")
+        if args.svg:
+            print(f"Share card written: {write_card_svg(report, args.svg)}")
+        if args.badge:
+            print(f"Badge written: {write_badge_svg(report, args.badge)}")
         return 0
 
     parser.print_help()

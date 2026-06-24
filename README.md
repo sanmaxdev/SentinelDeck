@@ -46,6 +46,13 @@ sentineldeck scan example.com --output reports/example.json
 sentineldeck report reports/example.json --html reports/example.html
 ```
 
+From a saved report you can also render a shareable SVG score card (sized for
+link previews) and a small embeddable grade badge for a site footer:
+
+```bash
+sentineldeck report reports/example.json --svg reports/example-card.svg --badge reports/example-badge.svg
+```
+
 The passive checks (DNS, HTTP, TLS, email) run concurrently, so a scan
 finishes close to the speed of the slowest single check. Use `--timeout` to
 bound how long the HTTP and TLS probes wait:
