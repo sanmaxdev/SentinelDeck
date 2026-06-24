@@ -36,6 +36,7 @@ def fetch_headers(domain: str, timeout: int = 10) -> dict[str, Any]:
                 result["reachable"] = True
                 result["status"] = response.status
                 result["headers"] = {key.lower(): value for key, value in response.headers.items()}
+                result["cookies"] = response.headers.get_all("set-cookie") or []
             return result
         except urllib.error.HTTPError as exc:
             # Some servers reject HEAD with 405/501 - retry once with GET.
@@ -44,11 +45,25 @@ def fetch_headers(domain: str, timeout: int = 10) -> dict[str, Any]:
             result["reachable"] = True
             result["status"] = exc.code
             result["headers"] = {key.lower(): value for key, value in exc.headers.items()}
+            result["cookies"] = exc.headers.get_all("set-cookie") or []
             return result
         except Exception as exc:  # noqa: BLE001 - scanner should return structured failure
             result["error"] = str(exc)
             return result
     return result
+
+
+def check_security_txt(domain: str, timeout: int = 10) -> dict[str, Any]:
+    """Check for an RFC 9116 security.txt at the well-known location."""
+    url = f"https://{domain}/.well-known/security.txt"
+    request = urllib.request.Request(url, method="GET", headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return {"present": response.status == 200, "status": response.status, "url": url}
+    except urllib.error.HTTPError as exc:
+        return {"present": False, "status": exc.code, "url": url}
+    except Exception:  # noqa: BLE001 - inconclusive, reported as unknown
+        return {"present": None, "status": None, "url": url}
 
 
 def check_http_redirect(domain: str, timeout: int = 10) -> dict[str, Any]:
@@ -75,7 +90,7 @@ def missing_security_headers(headers: dict[str, str]) -> dict[str, str]:
     return {name: advice for name, advice in SECURITY_HEADERS.items() if name not in headers}
 
 
-def evaluate_headers(headers: dict[str, str]) -> list[dict[str, Any]]:
+def evaluate_headers(headers: dict[str, str], cookies: list[str] | None = None) -> list[dict[str, Any]]:
     """Flag security headers that are present but configured ineffectively."""
     issues: list[dict[str, Any]] = []
 
@@ -120,7 +135,36 @@ def evaluate_headers(headers: dict[str, str]) -> list[dict[str, Any]]:
             "Set X-Frame-Options: DENY or SAMEORIGIN (or use CSP frame-ancestors).", {"value": xfo},
         ))
 
+    insecure = [c for c in (cookies or []) if not _cookie_is_secure(c)]
+    if insecure:
+        issues.append(_issue(
+            "insecure-cookies", "Cookies missing Secure or HttpOnly", "low",
+            "One or more Set-Cookie headers omit the Secure and/or HttpOnly attributes.",
+            "Add Secure and HttpOnly (and SameSite) to session cookies.",
+            {"cookies": [c.split(";")[0].split("=")[0] for c in insecure]},
+        ))
+
+    if "x-powered-by" in headers:
+        issues.append(_issue(
+            "info-disclosure-x-powered-by", "Server discloses technology via X-Powered-By", "low",
+            "The X-Powered-By header reveals backend technology, aiding targeted attacks.",
+            "Remove the X-Powered-By header.", {"value": headers["x-powered-by"]},
+        ))
+
+    server = headers.get("server", "")
+    if re.search(r"\d+\.\d+", server):
+        issues.append(_issue(
+            "info-disclosure-server-version", "Server header reveals a version", "info",
+            "The Server header exposes precise software version information.",
+            "Suppress version details in the Server banner.", {"value": server},
+        ))
+
     return issues
+
+
+def _cookie_is_secure(cookie: str) -> bool:
+    lowered = cookie.lower()
+    return "secure" in lowered and "httponly" in lowered
 
 
 def _issue(id_: str, title: str, severity: str, description: str, recommendation: str,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from sentineldeck.models import Finding
 from sentineldeck.scanners.http_headers import SECURITY_HEADERS
+from sentineldeck.scanners.tls import WEAK_SIGNATURE_HASHES
 
 SEVERITY_POINTS = {"critical": 40, "high": 25, "medium": 12, "low": 5, "info": 0}
 
@@ -90,7 +91,39 @@ def build_findings(checks: dict) -> list[Finding]:
                 evidence={"checked_header": header, "known_headers": sorted(SECURITY_HEADERS)},
             ))
 
-    tls = checks.get("tls", {})
+        security_txt = http.get("security_txt", {})
+        if security_txt and security_txt.get("present") is False:
+            findings.append(Finding(
+                id="no-security-txt",
+                title="No security.txt published",
+                severity="info",
+                description="The site does not publish a /.well-known/security.txt contact policy (RFC 9116).",
+                recommendation="Publish a security.txt with a security contact and disclosure policy.",
+                evidence={"url": security_txt.get("url")},
+            ))
+
+    findings.extend(_tls_findings(checks.get("tls", {})))
+
+    email = checks.get("email_security", {})
+    if email:
+        findings.extend(_email_findings(email))
+
+    dns_hygiene = checks.get("dns_hygiene", {})
+    if dns_hygiene:
+        findings.extend(_dns_hygiene_findings(dns_hygiene))
+
+    domain_intel = checks.get("domain_intel", {})
+    if domain_intel:
+        findings.extend(_domain_intel_findings(domain_intel))
+
+    return findings
+
+
+def _tls_findings(tls: dict) -> list[Finding]:
+    findings: list[Finding] = []
+    if not tls:
+        return findings
+
     if not tls.get("valid"):
         reason = tls.get("reason")
         title, recommendation = _tls_failure_copy(reason)
@@ -137,9 +170,31 @@ def build_findings(checks: dict) -> list[Finding]:
                 evidence={"protocol": protocol},
             ))
 
-    email = checks.get("email_security", {})
-    if email:
-        findings.extend(_email_findings(email))
+    # Certificate-quality checks apply to whatever leaf the server presented,
+    # whether or not the chain validated.
+    key_type, key_bits = tls.get("key_type"), tls.get("key_bits")
+    if key_bits is not None and (
+        (key_type == "RSA" and key_bits < 2048) or (key_type in ("EC", "DSA") and key_bits < 256)
+    ):
+        findings.append(Finding(
+            id="tls-weak-key",
+            title="TLS certificate uses a weak key",
+            severity="high",
+            description=f"The certificate public key is {key_type} {key_bits}-bit, below modern strength.",
+            recommendation="Reissue the certificate with at least an RSA-2048 or ECDSA-P256 key.",
+            evidence={"key_type": key_type, "key_bits": key_bits},
+        ))
+
+    signature = tls.get("signature_algorithm")
+    if signature in WEAK_SIGNATURE_HASHES:
+        findings.append(Finding(
+            id="tls-weak-signature",
+            title="TLS certificate uses a weak signature",
+            severity="high",
+            description=f"The certificate is signed with {signature.upper()}, which is cryptographically broken.",
+            recommendation="Reissue the certificate with a SHA-256 (or stronger) signature.",
+            evidence={"signature_algorithm": signature},
+        ))
 
     return findings
 
@@ -273,6 +328,66 @@ def _email_findings(email: dict) -> list[Finding]:
             recommendation="Confirm DKIM is configured for every sending service and note the selector in use.",
             evidence=dkim,
             confidence="indeterminate",
+        ))
+
+    return findings
+
+
+def _dns_hygiene_findings(hygiene: dict) -> list[Finding]:
+    findings: list[Finding] = []
+    caa = hygiene.get("caa", {})
+    dnssec = hygiene.get("dnssec", {})
+
+    if not caa.get("present"):
+        findings.append(Finding(
+            id="caa-missing",
+            title="No CAA records",
+            severity="low",
+            description="Without CAA records, any certificate authority may issue certificates for the domain.",
+            recommendation="Publish CAA records naming only the CAs you use.",
+            evidence=caa,
+            confidence="indeterminate" if caa.get("status") == "error" else "confirmed",
+        ))
+
+    if not dnssec.get("enabled"):
+        findings.append(Finding(
+            id="dnssec-disabled",
+            title="DNSSEC is not enabled",
+            severity="info",
+            description="DNSSEC is not enabled, so DNS responses for this domain are not cryptographically signed.",
+            recommendation="Enable DNSSEC at your DNS provider and registrar to protect against DNS spoofing.",
+            evidence=dnssec,
+            confidence="indeterminate" if dnssec.get("status") == "error" else "confirmed",
+        ))
+
+    return findings
+
+
+def _domain_intel_findings(intel: dict) -> list[Finding]:
+    findings: list[Finding] = []
+    if intel.get("status") != "ok":
+        return findings
+
+    expires_in = intel.get("expires_in_days")
+    if expires_in is not None and expires_in < 30:
+        findings.append(Finding(
+            id="domain-expiring-soon",
+            title="Domain registration expires soon",
+            severity="medium",
+            description=f"The domain registration expires in {expires_in} days.",
+            recommendation="Renew the domain registration and enable auto-renew to avoid losing the domain.",
+            evidence={"expires": intel.get("expires"), "registrar": intel.get("registrar")},
+        ))
+
+    age_days = intel.get("age_days")
+    if age_days is not None and age_days < 30:
+        findings.append(Finding(
+            id="domain-newly-registered",
+            title="Domain was registered very recently",
+            severity="low",
+            description=f"The domain was registered {age_days} days ago; new domains are common in phishing.",
+            recommendation="Confirm this domain is legitimate and expected for the organisation.",
+            evidence={"created": intel.get("created"), "registrar": intel.get("registrar")},
         ))
 
     return findings

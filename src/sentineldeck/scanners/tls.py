@@ -5,42 +5,14 @@ import ssl
 from datetime import datetime, timezone
 from typing import Any
 
-CERT_TIME_FORMAT = "%b %d %H:%M:%S %Y %Z"
+from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, rsa
+from cryptography.x509.oid import ExtensionOID, NameOID
+
 OUTDATED_PROTOCOLS = {"SSLv2", "SSLv3", "TLSv1", "TLSv1.1"}
-
-
-def _flatten_name(name: Any) -> dict[str, str]:
-    """Flatten an x509 name (tuple of RDNs) into a simple ``{field: value}`` dict."""
-    flattened: dict[str, str] = {}
-    for rdn in name or ():
-        for entry in rdn:
-            if isinstance(entry, (tuple, list)) and len(entry) == 2:
-                key, value = entry
-                flattened[str(key)] = str(value)
-    return flattened
-
-
-def parse_cert(cert: dict[str, Any], now: datetime | None = None) -> dict[str, Any]:
-    """Turn a raw ``getpeercert`` mapping into a structured, JSON-friendly summary."""
-    now = now or datetime.now(timezone.utc)
-    not_after = cert.get("notAfter")
-    expires_at = None
-    days_remaining = None
-    expired = False
-    if not_after:
-        expires = datetime.strptime(not_after, CERT_TIME_FORMAT).replace(tzinfo=timezone.utc)
-        expires_at = expires.isoformat()
-        days_remaining = (expires - now).days
-        expired = expires <= now
-
-    return {
-        "valid": True,
-        "issuer": _flatten_name(cert.get("issuer")),
-        "subject": _flatten_name(cert.get("subject")),
-        "expires_at": expires_at,
-        "days_remaining": days_remaining,
-        "expired": expired,
-    }
+WEAK_SIGNATURE_HASHES = {"md5", "sha1"}
+MIN_RSA_BITS = 2048
+MIN_EC_BITS = 256
 
 
 def classify_verify_error(exc: ssl.SSLCertVerificationError) -> str:
@@ -56,43 +28,139 @@ def classify_verify_error(exc: ssl.SSLCertVerificationError) -> str:
     return "untrusted"
 
 
-def inspect_tls(domain: str, timeout: int = 10) -> dict[str, Any]:
+def _common_name(name: x509.Name) -> str | None:
+    values = name.get_attributes_for_oid(NameOID.COMMON_NAME)
+    return values[0].value if values else None
+
+
+def _organization(name: x509.Name) -> str | None:
+    values = name.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
+    return values[0].value if values else None
+
+
+def _public_key_summary(cert: x509.Certificate) -> tuple[str | None, int | None]:
+    key = cert.public_key()
+    if isinstance(key, rsa.RSAPublicKey):
+        return "RSA", key.key_size
+    if isinstance(key, ec.EllipticCurvePublicKey):
+        return "EC", key.curve.key_size
+    if isinstance(key, ed25519.Ed25519PublicKey):
+        return "Ed25519", 256
+    if isinstance(key, ed448.Ed448PublicKey):
+        return "Ed448", 456
+    if isinstance(key, dsa.DSAPublicKey):
+        return "DSA", key.key_size
+    return None, None
+
+
+def _san_dns_names(cert: x509.Certificate) -> list[str]:
+    try:
+        ext = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+    except x509.ExtensionNotFound:
+        return []
+    return ext.value.get_values_for_type(x509.DNSName)
+
+
+def hostname_matches(hostname: str, dns_names: list[str]) -> bool:
+    hostname = hostname.lower().rstrip(".")
+    for raw in dns_names:
+        name = raw.lower().rstrip(".")
+        if name == hostname:
+            return True
+        if name.startswith("*."):
+            base = name[2:]
+            if "." in hostname and hostname.split(".", 1)[1] == base:
+                return True
+    return False
+
+
+def _aware(dt: datetime) -> datetime:
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def summarize_certificate(
+    cert: x509.Certificate, hostname: str, now: datetime | None = None
+) -> dict[str, Any]:
+    """Extract the security-relevant fields from a presented certificate.
+
+    Works on any certificate the server presents, including expired,
+    self-signed, or hostname-mismatched ones, because it reads the leaf
+    directly rather than relying on a validated chain.
+    """
+    now = now or datetime.now(timezone.utc)
+    not_after = _aware(cert.not_valid_after)
+    not_before = _aware(cert.not_valid_before)
+    key_type, key_bits = _public_key_summary(cert)
+    san = _san_dns_names(cert)
+    try:
+        sig_hash = cert.signature_hash_algorithm.name.lower() if cert.signature_hash_algorithm else None
+    except Exception:  # noqa: BLE001 - exotic algorithms should not crash a scan
+        sig_hash = None
+
+    return {
+        "subject_cn": _common_name(cert.subject),
+        "issuer_cn": _common_name(cert.issuer),
+        "issuer_org": _organization(cert.issuer),
+        "san": san,
+        "not_before": not_before.isoformat(),
+        "expires_at": not_after.isoformat(),
+        "days_remaining": (not_after - now).days,
+        "expired": not_after <= now,
+        "not_yet_valid": not_before > now,
+        "self_signed": cert.subject == cert.issuer,
+        "key_type": key_type,
+        "key_bits": key_bits,
+        "signature_algorithm": sig_hash,
+        "hostname_match": hostname_matches(hostname, san) if san else None,
+    }
+
+
+def _verify_chain(domain: str, timeout: int) -> tuple[bool, str | None, str | None]:
     context = ssl.create_default_context()
     try:
         with socket.create_connection((domain, 443), timeout=timeout) as sock:
             with context.wrap_socket(sock, server_hostname=domain) as wrapped:
-                cert = wrapped.getpeercert()
-                protocol = wrapped.version()
+                return True, None, wrapped.version()
     except ssl.SSLCertVerificationError as exc:
-        return _inspect_untrusted(domain, timeout, classify_verify_error(exc), str(exc))
-    except ssl.SSLError as exc:
-        return {"valid": False, "reason": "untrusted", "error": str(exc)}
-    except (socket.gaierror, TimeoutError, OSError) as exc:
-        return {"valid": False, "reason": "unreachable", "error": str(exc)}
-
-    result = parse_cert(cert or {})
-    result["verified"] = True
-    result["protocol"] = protocol
-    result["protocol_outdated"] = protocol in OUTDATED_PROTOCOLS
-    return result
+        return False, classify_verify_error(exc), None
+    except ssl.SSLError:
+        return False, "untrusted", None
+    except (socket.gaierror, TimeoutError, OSError):
+        return False, "unreachable", None
 
 
-def _inspect_untrusted(domain: str, timeout: int, reason: str, error: str) -> dict[str, Any]:
-    """The chain did not validate; still record the negotiated protocol if we can.
-
-    ``getpeercert()`` only returns parsed fields for a *validated* chain, so we
-    cannot safely report issuer/expiry here — but the classified ``reason`` is
-    the actionable part, and the protocol still helps the report.
-    """
-    info: dict[str, Any] = {"valid": False, "reason": reason, "error": error}
+def _fetch_leaf(domain: str, timeout: int) -> tuple[bytes | None, str | None]:
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
     try:
         with socket.create_connection((domain, 443), timeout=timeout) as sock:
             with context.wrap_socket(sock, server_hostname=domain) as wrapped:
-                info["protocol"] = wrapped.version()
-                info["certificate_present"] = wrapped.getpeercert(binary_form=True) is not None
+                return wrapped.getpeercert(binary_form=True), wrapped.version()
     except OSError:
-        pass
-    return info
+        return None, None
+
+
+def inspect_tls(domain: str, timeout: int = 10) -> dict[str, Any]:
+    verified, reason, protocol = _verify_chain(domain, timeout)
+    der, der_protocol = _fetch_leaf(domain, timeout)
+
+    if not verified and der is None:
+        return {"reachable": False, "valid": False, "reason": reason or "unreachable",
+                "error": "could not establish a TLS connection on port 443"}
+
+    negotiated = protocol or der_protocol
+    result: dict[str, Any] = {
+        "reachable": True,
+        "valid": verified,
+        "verified": verified,
+        "reason": reason,
+        "protocol": negotiated,
+        "protocol_outdated": negotiated in OUTDATED_PROTOCOLS if negotiated else False,
+    }
+    if der is not None:
+        try:
+            result.update(summarize_certificate(x509.load_der_x509_certificate(der), domain))
+        except Exception as exc:  # noqa: BLE001 - malformed cert should not crash a scan
+            result["certificate_error"] = str(exc)
+    return result

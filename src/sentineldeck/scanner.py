@@ -4,10 +4,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 from sentineldeck.models import ScanReport
 from sentineldeck.risk.scoring import build_findings, grade, score_findings
+from sentineldeck.scanners.dns_hygiene import analyze_dns_hygiene
+from sentineldeck.scanners.dns_lookup import resolve  # noqa: F401 - re-exported for tests
 from sentineldeck.scanners.domain import normalize_domain, resolve_domain
+from sentineldeck.scanners.domain_intel import analyze_domain_intel
 from sentineldeck.scanners.email_security import analyze_email_security
 from sentineldeck.scanners.http_headers import (
     check_http_redirect,
+    check_security_txt,
     evaluate_headers,
     fetch_headers,
     missing_security_headers,
@@ -21,28 +25,34 @@ def scan_domain(target: str, timeout: int = DEFAULT_TIMEOUT) -> ScanReport:
     domain = normalize_domain(target)
     report = ScanReport.empty(domain)
 
-    # The scanners are independent and I/O-bound (DNS, HTTP, TLS, more DNS),
-    # so run them concurrently to keep total scan time close to the slowest one.
-    with ThreadPoolExecutor(max_workers=5) as pool:
-        dns_future = pool.submit(resolve_domain, domain)
-        http_future = pool.submit(fetch_headers, domain, timeout)
-        redirect_future = pool.submit(check_http_redirect, domain, timeout)
-        tls_future = pool.submit(inspect_tls, domain, timeout)
-        email_future = pool.submit(analyze_email_security, domain)
+    # Every probe is independent and I/O-bound (DNS, HTTP, TLS, RDAP), so we run
+    # them concurrently and the whole scan finishes close to the slowest one.
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {
+            "dns": pool.submit(resolve_domain, domain),
+            "http": pool.submit(fetch_headers, domain, timeout),
+            "redirect": pool.submit(check_http_redirect, domain, timeout),
+            "security_txt": pool.submit(check_security_txt, domain, timeout),
+            "tls": pool.submit(inspect_tls, domain, timeout),
+            "email": pool.submit(analyze_email_security, domain),
+            "dns_hygiene": pool.submit(analyze_dns_hygiene, domain),
+            "domain_intel": pool.submit(analyze_domain_intel, domain, timeout),
+        }
+        results = {name: future.result() for name, future in futures.items()}
 
-        dns = dns_future.result()
-        http = {**http_future.result(), **redirect_future.result()}
-        tls = tls_future.result()
-        email_security = email_future.result()
-
+    http = {**results["http"], **results["redirect"], "security_txt": results["security_txt"]}
     headers = http.get("headers", {})
+    cookies = http.get("cookies", [])
+
     report.checks = {
-        "dns": dns,
+        "dns": results["dns"],
         "http": http,
         "missing_security_headers": missing_security_headers(headers),
-        "header_issues": evaluate_headers(headers),
-        "tls": tls,
-        "email_security": email_security,
+        "header_issues": evaluate_headers(headers, cookies),
+        "tls": results["tls"],
+        "email_security": results["email"],
+        "dns_hygiene": results["dns_hygiene"],
+        "domain_intel": results["domain_intel"],
     }
     report.findings = build_findings(report.checks)
     report.risk_score = score_findings(report.findings)

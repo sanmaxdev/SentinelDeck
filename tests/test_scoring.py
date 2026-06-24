@@ -106,3 +106,23 @@ def test_score_findings_ignores_indeterminate_findings():
     ]
 
     assert score_findings(findings) == 25
+
+
+def test_build_findings_flags_weak_tls_key():
+    finding_ids = {f.id for f in build_findings({"tls": {"valid": True, "key_type": "RSA", "key_bits": 1024}})}
+
+    assert "tls-weak-key" in finding_ids
+
+
+def test_build_findings_flags_weak_tls_signature():
+    finding_ids = {f.id for f in build_findings({"tls": {"valid": True, "signature_algorithm": "sha1"}})}
+
+    assert "tls-weak-signature" in finding_ids
+
+
+def test_build_findings_flags_missing_security_txt():
+    checks = {"http": {"reachable": True, "headers": {}, "security_txt": {"present": False, "url": "u"}}}
+
+    finding_ids = {f.id for f in build_findings(checks)}
+
+    assert "no-security-txt" in finding_ids

@@ -44,3 +44,22 @@ def test_evaluate_headers_accepts_strong_configuration():
     }
 
     assert evaluate_headers(headers) == []
+
+
+def test_evaluate_headers_flags_insecure_cookies():
+    issues = {i["id"] for i in evaluate_headers({}, cookies=["sid=abc; Path=/"])}
+
+    assert "insecure-cookies" in issues
+
+
+def test_evaluate_headers_accepts_hardened_cookies():
+    issues = {i["id"] for i in evaluate_headers({}, cookies=["sid=abc; Secure; HttpOnly; SameSite=Lax"])}
+
+    assert "insecure-cookies" not in issues
+
+
+def test_evaluate_headers_flags_information_disclosure():
+    issues = {i["id"] for i in evaluate_headers({"x-powered-by": "PHP/8.1", "server": "nginx/1.25.3"})}
+
+    assert "info-disclosure-x-powered-by" in issues
+    assert "info-disclosure-server-version" in issues
