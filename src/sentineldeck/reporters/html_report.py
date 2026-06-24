@@ -26,6 +26,7 @@ def report_from_dict(data: dict[str, Any]) -> ScanReport:
             description=item.get("description", ""),
             recommendation=item.get("recommendation", ""),
             evidence=item.get("evidence", {}),
+            confidence=item.get("confidence", "confirmed"),
         )
         for item in data.get("findings", [])
     ]
@@ -55,10 +56,16 @@ def _severity_counts(report: ScanReport) -> dict[str, int]:
 def _render_finding(finding: Finding) -> str:
     evidence = escape(json.dumps(finding.evidence, indent=2, sort_keys=True))
     severity = escape(finding.severity.lower())
+    unverified = (
+        '<span class="badge badge-info">UNVERIFIED</span>'
+        if finding.confidence == "indeterminate"
+        else ""
+    )
     return f"""
     <article class="finding finding-{severity}">
       <div class="finding-meta">
         <span class="badge badge-{severity}">{escape(finding.severity.upper())}</span>
+        {unverified}
         <code>{escape(finding.id)}</code>
       </div>
       <h3>{escape(finding.title)}</h3>

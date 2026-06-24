@@ -13,6 +13,10 @@ class Finding:
     description: str
     recommendation: str
     evidence: dict[str, Any] = field(default_factory=dict)
+    # "confirmed" when we positively observed the issue, "indeterminate" when a
+    # check could not run conclusively (e.g. DNS unreachable, DKIM selector
+    # guessing). Indeterminate findings are reported but never scored.
+    confidence: str = "confirmed"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

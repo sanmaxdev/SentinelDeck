@@ -10,13 +10,26 @@ It turns quick domain checks into clean JSON and client-ready HTML reports.
 
 - Domain format validation
 - DNS resolution summary
-- HTTPS reachability
-- HTTP security headers
-- TLS certificate expiry
-- MX, SPF, and DMARC email-security posture
-- Risk scoring with actionable findings
+- HTTPS reachability (HEAD with GET fallback) and HTTP→HTTPS redirect
+- HTTP security headers — presence **and** value quality (HSTS max-age, unsafe CSP directives, weak X-Frame-Options, etc.)
+- TLS certificate validity with a classified failure reason (expired, self-signed, hostname mismatch, untrusted) plus expiry and negotiated protocol
+- Email-security posture via in-process DNS:
+  - MX presence
+  - SPF policy strength, multiple-record and 10-lookup-limit checks
+  - DMARC policy, subdomain policy, and `pct` enforcement coverage
+  - DKIM detection across common selectors
+- Risk scoring with actionable findings, where **inconclusive checks are reported as `indeterminate` and never counted toward the score**
 - JSON report export
 - Client-ready HTML report export
+
+### Accuracy notes
+
+DNS is resolved in-process with [`dnspython`](https://www.dnspython.org/) (with
+a TCP fallback for large SPF/DKIM records) instead of shelling out to `dig`/`host`,
+which removes a whole class of false negatives in containers and CI. When a
+check genuinely cannot be determined (e.g. DNS is unreachable), the related
+finding is marked `indeterminate` so a client never sees an unverified issue
+presented as fact.
 
 ## Install locally
 
@@ -80,6 +93,9 @@ SentinelDeck is **passive-first**. The MVP avoids intrusive vulnerability scanni
 - [x] TLS expiry check
 - [x] SPF/DMARC/MX checks
 - [x] HTML report
+- [x] DKIM detection and deeper SPF/DMARC analysis
+- [x] TLS failure classification and protocol checks
+- [x] Security-header value validation
 - [ ] PDF export
 - [ ] Screenshot evidence
 - [ ] Scheduled monitoring

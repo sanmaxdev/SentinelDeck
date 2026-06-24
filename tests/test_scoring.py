@@ -54,3 +54,55 @@ def test_build_findings_flags_missing_security_headers():
 
     assert findings["missing-strict-transport-security"].severity == "medium"
     assert findings["missing-referrer-policy"].severity == "low"
+
+
+def test_build_findings_classifies_tls_failure_reason():
+    checks = {"tls": {"valid": False, "reason": "self-signed", "error": "self-signed certificate"}}
+
+    findings = {finding.id: finding for finding in build_findings(checks)}
+
+    assert "tls-self-signed" in findings
+    assert "self-signed" in findings["tls-self-signed"].title.lower()
+
+
+def test_build_findings_flags_outdated_tls_protocol():
+    checks = {"tls": {"valid": True, "protocol": "TLSv1", "protocol_outdated": True}}
+
+    finding_ids = {finding.id for finding in build_findings(checks)}
+
+    assert "tls-outdated-protocol" in finding_ids
+
+
+def test_build_findings_flags_missing_https_redirect():
+    checks = {"http": {"reachable": True, "headers": {}, "https_redirect": False, "http_status": 200}}
+
+    finding_ids = {finding.id for finding in build_findings(checks)}
+
+    assert "no-https-redirect" in finding_ids
+
+
+def test_build_findings_passes_through_header_issues():
+    checks = {
+        "http": {"reachable": True, "headers": {"strict-transport-security": "max-age=0"}},
+        "header_issues": [{
+            "id": "hsts-ineffective",
+            "title": "HSTS is present but disabled",
+            "severity": "medium",
+            "description": "max-age=0",
+            "recommendation": "Set a real max-age.",
+            "evidence": {},
+        }],
+    }
+
+    finding_ids = {finding.id for finding in build_findings(checks)}
+
+    assert "hsts-ineffective" in finding_ids
+
+
+def test_score_findings_ignores_indeterminate_findings():
+    findings = [
+        Finding("a", "a", "high", "a", "a"),
+        Finding("b", "b", "high", "b", "b", confidence="indeterminate"),
+    ]
+
+    assert score_findings(findings) == 25

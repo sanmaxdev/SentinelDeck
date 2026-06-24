@@ -11,8 +11,11 @@ def test_scan_domain_includes_email_security(monkeypatch):
         "dmarc": {"present": True, "records": ["v=DMARC1; p=reject"], "policy": "reject"},
     }
 
+    redirect = {"https_redirect": True, "http_status": 301}
+
     monkeypatch.setattr("sentineldeck.scanner.resolve_domain", lambda domain: dns)
     monkeypatch.setattr("sentineldeck.scanner.fetch_headers", lambda domain, timeout=10: http)
+    monkeypatch.setattr("sentineldeck.scanner.check_http_redirect", lambda domain, timeout=10: redirect)
     monkeypatch.setattr("sentineldeck.scanner.inspect_tls", lambda domain, timeout=10: tls)
     monkeypatch.setattr("sentineldeck.scanner.analyze_email_security", lambda domain: email)
 

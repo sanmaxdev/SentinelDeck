@@ -1,50 +1,18 @@
 from __future__ import annotations
 
-import re
-import subprocess
 from collections.abc import Callable
 
-DnsQuery = Callable[[str, str], str]
+from sentineldeck.scanners.dns_lookup import ERROR, resolve
 
+# Resolver signature: (name, record_type) -> (records, status).
+Resolver = Callable[[str, str], "tuple[list[str], str]"]
 
-def query_dns(name: str, record_type: str) -> str:
-    """Query DNS using common system tools without adding runtime dependencies."""
-    commands = [
-        ["dig", "+short", record_type, name],
-        ["host", "-t", record_type, name],
-    ]
-    for command in commands:
-        try:
-            completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=10)
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            continue
-        if completed.returncode == 0 and completed.stdout.strip():
-            return completed.stdout
-    return ""
-
-
-def parse_txt_records(output: str) -> list[str]:
-    records: list[str] = []
-    for line in output.splitlines():
-        parts = re.findall(r'"([^"]*)"', line)
-        if parts:
-            records.append("".join(parts).strip())
-        elif line.strip():
-            records.append(line.strip())
-    return records
-
-
-def parse_mx_records(output: str) -> list[str]:
-    records: list[str] = []
-    for line in output.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        if " mail is handled by " in line:
-            records.append(line.split(" mail is handled by ", 1)[1])
-        else:
-            records.append(line)
-    return records
+# Best-effort DKIM selector probes. Absence is inconclusive, so DKIM findings
+# are always reported with indeterminate confidence.
+COMMON_DKIM_SELECTORS = (
+    "default", "google", "selector1", "selector2", "k1", "k2",
+    "mail", "dkim", "s1", "s2", "mandrill", "zoho", "protonmail", "fm1",
+)
 
 
 def extract_spf_policy(record: str | None) -> str | None:
@@ -57,36 +25,83 @@ def extract_spf_policy(record: str | None) -> str | None:
     return None
 
 
-def extract_dmarc_policy(record: str | None) -> str | None:
+def count_spf_lookups(record: str | None) -> int:
+    """Count mechanisms that trigger a DNS lookup (RFC 7208 caps this at 10)."""
+    if not record:
+        return 0
+    count = 0
+    for token in record.lower().split():
+        if token.startswith(("include:", "a:", "mx:", "exists:", "redirect=", "ptr:")):
+            count += 1
+        elif token in ("a", "mx", "ptr"):
+            count += 1
+    return count
+
+
+def extract_dmarc_tag(record: str | None, tag: str) -> str | None:
     if not record:
         return None
     for part in record.split(";"):
         key, _, value = part.strip().partition("=")
-        if key.lower() == "p":
-            return value.strip().lower() or None
+        if key.strip().lower() == tag.lower():
+            return value.strip() or None
     return None
 
 
-def analyze_email_security(domain: str, query: DnsQuery = query_dns) -> dict:
-    mx_records = parse_mx_records(query(domain, "MX"))
-    txt_records = parse_txt_records(query(domain, "TXT"))
-    dmarc_records = parse_txt_records(query(f"_dmarc.{domain}", "TXT"))
+def extract_dmarc_policy(record: str | None) -> str | None:
+    value = extract_dmarc_tag(record, "p")
+    return value.lower() if value else None
 
-    spf_records = [record for record in txt_records if record.lower().startswith("v=spf1")]
-    dmarc_policy_records = [record for record in dmarc_records if record.lower().startswith("v=dmarc1")]
+
+def _probe_dkim(domain: str, resolver: Resolver, selectors: tuple[str, ...]) -> dict:
+    found: list[str] = []
+    any_error = False
+    for selector in selectors:
+        records, status = resolver(f"{selector}._domainkey.{domain}", "TXT")
+        if status == ERROR:
+            any_error = True
+        if any("v=dkim1" in r.lower() or "k=rsa" in r.lower() or "p=" in r.lower() for r in records):
+            found.append(selector)
+    return {
+        "present": bool(found),
+        "checked_selectors": list(selectors),
+        "found_selectors": found,
+        "status": ERROR if (any_error and not found) else "ok",
+    }
+
+
+def analyze_email_security(domain: str, resolver: Resolver = resolve) -> dict:
+    mx_records, mx_status = resolver(domain, "MX")
+    txt_records, txt_status = resolver(domain, "TXT")
+    dmarc_records, dmarc_status = resolver(f"_dmarc.{domain}", "TXT")
+
+    spf_records = [r for r in txt_records if r.lower().startswith("v=spf1")]
+    dmarc_policy_records = [r for r in dmarc_records if r.lower().startswith("v=dmarc1")]
     spf_record = spf_records[0] if spf_records else None
     dmarc_record = dmarc_policy_records[0] if dmarc_policy_records else None
 
     return {
-        "mx": {"present": bool(mx_records), "records": mx_records},
+        "mx": {
+            "present": bool(mx_records),
+            "records": mx_records,
+            "status": mx_status,
+        },
         "spf": {
             "present": bool(spf_records),
             "records": spf_records,
             "policy": extract_spf_policy(spf_record),
+            "lookup_count": count_spf_lookups(spf_record),
+            "multiple": len(spf_records) > 1,
+            "status": txt_status,
         },
         "dmarc": {
             "present": bool(dmarc_policy_records),
             "records": dmarc_policy_records,
             "policy": extract_dmarc_policy(dmarc_record),
+            "pct": extract_dmarc_tag(dmarc_record, "pct"),
+            "subdomain_policy": (extract_dmarc_tag(dmarc_record, "sp") or "").lower() or None,
+            "rua": extract_dmarc_tag(dmarc_record, "rua"),
+            "status": dmarc_status,
         },
+        "dkim": _probe_dkim(domain, resolver, COMMON_DKIM_SELECTORS),
     }

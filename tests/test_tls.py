@@ -1,8 +1,34 @@
 from datetime import datetime, timezone
 
-from sentineldeck.scanners.tls import _flatten_name, parse_cert
+from sentineldeck.scanners.tls import _flatten_name, classify_verify_error, parse_cert
 
 NOW = datetime(2026, 6, 24, tzinfo=timezone.utc)
+
+
+class _FakeVerifyError:
+    def __init__(self, code, message):
+        self.verify_code = code
+        self.verify_message = message
+
+    def __str__(self):
+        return self.verify_message
+
+
+def test_classify_verify_error_expired():
+    assert classify_verify_error(_FakeVerifyError(10, "certificate has expired")) == "expired"
+
+
+def test_classify_verify_error_self_signed():
+    assert classify_verify_error(_FakeVerifyError(18, "self-signed certificate")) == "self-signed"
+
+
+def test_classify_verify_error_hostname_mismatch():
+    err = _FakeVerifyError(None, "Hostname mismatch, certificate is not valid for 'x'")
+    assert classify_verify_error(err) == "hostname-mismatch"
+
+
+def test_classify_verify_error_defaults_to_untrusted():
+    assert classify_verify_error(_FakeVerifyError(20, "unable to get local issuer certificate")) == "untrusted"
 
 
 def test_flatten_name_collapses_rdn_tuples():
