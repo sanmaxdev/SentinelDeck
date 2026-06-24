@@ -2,7 +2,7 @@
 
 **SentinelDeck** is a passive attack-surface radar for small businesses, agencies, and security consultants.
 
-It turns quick domain checks into clean JSON reports today, then client-ready HTML/PDF reports next.
+It turns quick domain checks into clean JSON and client-ready HTML reports.
 
 > Status: MVP foundation. Safe/passive checks only.
 
@@ -16,6 +16,7 @@ It turns quick domain checks into clean JSON reports today, then client-ready HT
 - MX, SPF, and DMARC email-security posture
 - Risk scoring with actionable findings
 - JSON report export
+- Client-ready HTML report export
 
 ## Install locally
 
@@ -29,6 +30,7 @@ pip install -e .
 
 ```bash
 sentineldeck scan example.com --output reports/example.json
+sentineldeck report reports/example.json --html reports/example.html
 ```
 
 Or without installing:
@@ -59,7 +61,7 @@ SentinelDeck is **passive-first**. The MVP avoids intrusive vulnerability scanni
 - [x] HTTP header checks
 - [x] TLS expiry check
 - [x] SPF/DMARC/MX checks
-- [ ] HTML report
+- [x] HTML report
 - [ ] PDF export
 - [ ] Screenshot evidence
 - [ ] Scheduled monitoring

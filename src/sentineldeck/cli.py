@@ -5,6 +5,7 @@ import json
 import sys
 
 from sentineldeck import __version__
+from sentineldeck.reporters.html_report import read_json_report, write_html_report
 from sentineldeck.reporters.json_report import write_json_report
 from sentineldeck.scanner import scan_domain
 
@@ -18,6 +19,10 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("target", help="Domain to scan, e.g. example.com")
     scan.add_argument("-o", "--output", help="Write JSON report to this path.")
     scan.add_argument("--pretty", action="store_true", help="Print the full JSON report to stdout.")
+
+    report = subparsers.add_parser("report", help="Render a saved JSON scan report.")
+    report.add_argument("source", help="Path to a SentinelDeck JSON report.")
+    report.add_argument("--html", required=True, help="Write an HTML report to this path.")
     return parser
 
 
@@ -38,6 +43,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.pretty or not args.output:
             print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
         print(f"SentinelDeck score: {report.risk_score}/100 grade={report.grade} findings={len(report.findings)}")
+        return 0
+
+    if args.command == "report":
+        report = read_json_report(args.source)
+        path = write_html_report(report, args.html)
+        print(f"HTML report written: {path}")
         return 0
 
     parser.print_help()
