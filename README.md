@@ -1,37 +1,52 @@
-# SentinelDeck
+<h1 align="center">SentinelDeck</h1>
 
-**SentinelDeck** is a passive attack-surface radar for small businesses, agencies, and security consultants.
+<p align="center">
+  <strong>Passive attack-surface radar for small businesses, agencies, and security consultants.</strong><br>
+  One safe scan turns a domain into a clear risk grade, structured JSON, and a client-ready report.
+</p>
 
-It turns quick domain checks into clean JSON and client-ready HTML reports.
+<p align="center">
+  <img alt="CI" src="https://github.com/sanmaxdev/SentinelDeck/actions/workflows/ci.yml/badge.svg">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-blue">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
+  <img alt="Status" src="https://img.shields.io/badge/status-alpha-orange">
+</p>
 
-> Status: MVP foundation. Safe/passive checks only.
+---
 
-## What it checks now
+SentinelDeck inspects the public-facing posture of a domain — DNS, HTTP, TLS,
+and email authentication — using only the kind of normal lookups any browser or
+mail server would make. No intrusive scanning, no exploitation, nothing a domain
+owner would not expect. The result is a risk score, an A–F grade, and a set of
+prioritised findings with concrete remediation steps.
 
-- Domain format validation
-- DNS resolution summary
-- HTTPS reachability (HEAD with GET fallback) and HTTP→HTTPS redirect
-- HTTP security headers — presence **and** value quality (HSTS max-age, unsafe CSP directives, weak X-Frame-Options, etc.)
-- TLS certificate validity with a classified failure reason (expired, self-signed, hostname mismatch, untrusted) plus expiry and negotiated protocol
-- Email-security posture via in-process DNS:
-  - MX presence
-  - SPF policy strength, multiple-record and 10-lookup-limit checks
-  - DMARC policy, subdomain policy, and `pct` enforcement coverage
-  - DKIM detection across common selectors
-- Risk scoring with actionable findings, where **inconclusive checks are reported as `indeterminate` and never counted toward the score**
-- JSON report export
-- Client-ready HTML report export
+It is built for the people who need that picture fast: an agency qualifying a
+prospect, a consultant producing a client report, or a small team checking its
+own footprint.
 
-### Accuracy notes
+## Why SentinelDeck
 
-DNS is resolved in-process with [`dnspython`](https://www.dnspython.org/) (with
-a TCP fallback for large SPF/DKIM records) instead of shelling out to `dig`/`host`,
-which removes a whole class of false negatives in containers and CI. When a
-check genuinely cannot be determined (e.g. DNS is unreachable), the related
-finding is marked `indeterminate` so a client never sees an unverified issue
-presented as fact.
+- **Passive and safe by design** — only standard DNS / HTTP / TLS metadata, so
+  you can run it against any domain you are authorised to assess.
+- **Accurate, not noisy** — DNS is resolved in-process, certificates are parsed
+  directly, and any check that cannot be determined is marked *unverified* and
+  kept out of the score. A client never sees a guess presented as fact.
+- **Report-ready** — export clean JSON for automation, a polished dark-themed
+  HTML report for clients, and a shareable score card or badge.
 
-## Install locally
+## What it checks
+
+| Area | Checks |
+| --- | --- |
+| **DNS** | Resolution, CAA issuance control, DNSSEC |
+| **HTTP** | HTTPS reachability, HTTP→HTTPS redirect, security-header presence **and** value quality, security.txt, cookie flags, version disclosure |
+| **TLS** | Trust and failure reason (expired / self-signed / hostname mismatch / untrusted), expiry, protocol version, key strength, signature algorithm, hostname match |
+| **Email** | MX, SPF (policy, multiple records, 10-lookup limit), DMARC (policy, subdomain policy, enforcement coverage), DKIM detection |
+| **Domain** | Registrar, registration age, and expiry via RDAP |
+
+Every issue is scored by severity into a 0–100 risk score and an A–F grade.
+
+## Install
 
 ```bash
 python3 -m venv .venv
@@ -39,44 +54,53 @@ python3 -m venv .venv
 pip install -e .
 ```
 
-## Run
+## Usage
+
+Scan a domain and write a JSON report:
 
 ```bash
 sentineldeck scan example.com --output reports/example.json
-sentineldeck report reports/example.json --html reports/example.html
 ```
 
-From a saved report you can also render a shareable SVG score card (sized for
-link previews) and a small embeddable grade badge for a site footer:
+Render a client-ready HTML report, a shareable score card, and a badge:
 
 ```bash
-sentineldeck report reports/example.json --svg reports/example-card.svg --badge reports/example-badge.svg
+sentineldeck report reports/example.json \
+  --html reports/example.html \
+  --svg  reports/example-card.svg \
+  --badge reports/example-badge.svg
 ```
 
-The passive checks (DNS, HTTP, TLS, email) run concurrently, so a scan
-finishes close to the speed of the slowest single check. Use `--timeout` to
-bound how long the HTTP and TLS probes wait:
-
-```bash
-sentineldeck scan example.com --timeout 5 --output reports/example.json
-```
-
-Or without installing:
-
-```bash
-python3 -m sentineldeck.cli scan example.com --output reports/example.json
-```
+Useful flags: `--pretty` prints the full JSON to stdout, and `--timeout`
+bounds the HTTP/TLS probes.
 
 ## Example output
 
 ```json
 {
   "target": "example.com",
-  "risk_score": 35,
+  "risk_score": 27,
   "grade": "B",
-  "findings": []
+  "findings": [
+    { "id": "dmarc-missing", "severity": "medium", "confidence": "confirmed", "...": "..." }
+  ]
 }
 ```
+
+## How it works
+
+```
+src/sentineldeck/
+├── scanner.py          # runs every probe concurrently and assembles the report
+├── scanners/           # one module per surface: dns, dns_hygiene, tls,
+│                       #   http_headers, email_security, domain_intel
+├── risk/scoring.py     # turns raw check results into scored findings
+├── reporters/          # json, html, and svg (card + badge) renderers
+└── models.py           # Finding and ScanReport data models
+```
+
+Each scanner is independent and keeps its network call injectable, so the whole
+suite is tested offline with mocked DNS and HTTP.
 
 ## Development
 
@@ -86,28 +110,29 @@ ruff check .
 pytest -q
 ```
 
-CI runs the linter and test suite against Python 3.10, 3.11, and 3.12.
+CI runs the linter and test suite on Python 3.10, 3.11, and 3.12.
 
 ## Safety model
 
-SentinelDeck is **passive-first**. The MVP avoids intrusive vulnerability scanning. It only performs normal DNS lookups and HTTP/TLS metadata checks against the supplied domain.
+SentinelDeck is **passive-first**. It performs only normal DNS lookups and
+standard HTTP/TLS metadata requests against the supplied domain. Use it only on
+domains you own or are authorised to assess.
 
 ## Roadmap
 
-- [x] CLI skeleton
-- [x] JSON report export
-- [x] HTTP header checks
-- [x] TLS expiry check
-- [x] SPF/DMARC/MX checks
-- [x] HTML report
-- [x] DKIM detection and deeper SPF/DMARC analysis
-- [x] TLS failure classification and protocol checks
-- [x] Security-header value validation
+- [x] Passive DNS, HTTP, TLS, and email checks
+- [x] Deep certificate inspection, DNS hygiene, and domain intelligence
+- [x] JSON, HTML, score card, and badge outputs
 - [ ] PDF export
-- [ ] Screenshot evidence
 - [ ] Scheduled monitoring
-- [ ] Telegram/email alerts
+- [ ] Telegram / email alerts
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). New checks
+must be passive-safe and come with tests. Please also read our
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-MIT
+[MIT](LICENSE)

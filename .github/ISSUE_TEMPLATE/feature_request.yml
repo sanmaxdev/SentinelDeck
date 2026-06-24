@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest a new check or capability
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed check or change
+      description: If it is a new check, what does it look for and what would it report?
+    validations:
+      required: true
+  - type: checkboxes
+    id: passive
+    attributes:
+      label: Passive-safe
+      options:
+        - label: This can be done with passive DNS / HTTP / TLS metadata only (no intrusive scanning).
+          required: true

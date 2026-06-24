@@ -1,0 +1,32 @@
+name: Bug report
+description: Report incorrect output, a crash, or a false positive/negative
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem, including the command you ran.
+      placeholder: "sentineldeck scan example.com ... reported X but the real value is Y"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "0.1.0 or git SHA"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, and how you installed SentinelDeck.
+    validations:
+      required: false
