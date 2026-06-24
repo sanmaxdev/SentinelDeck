@@ -15,7 +15,13 @@ SECURITY_HEADERS = {
 
 
 def fetch_headers(domain: str, timeout: int = 10) -> dict[str, Any]:
-    result: dict[str, Any] = {"reachable": False, "url": f"https://{domain}", "status": None, "headers": {}, "error": None}
+    result: dict[str, Any] = {
+        "reachable": False,
+        "url": f"https://{domain}",
+        "status": None,
+        "headers": {},
+        "error": None,
+    }
     request = urllib.request.Request(result["url"], method="HEAD", headers={"User-Agent": "SentinelDeck/0.1"})
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:

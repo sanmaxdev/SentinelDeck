@@ -11,7 +11,10 @@ from sentineldeck.scanner import scan_domain
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="sentineldeck", description="Passive attack-surface radar for small businesses.")
+    parser = argparse.ArgumentParser(
+        prog="sentineldeck",
+        description="Passive attack-surface radar for small businesses.",
+    )
     parser.add_argument("--version", action="version", version=f"SentinelDeck {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -19,6 +22,12 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("target", help="Domain to scan, e.g. example.com")
     scan.add_argument("-o", "--output", help="Write JSON report to this path.")
     scan.add_argument("--pretty", action="store_true", help="Print the full JSON report to stdout.")
+    scan.add_argument(
+        "--timeout",
+        type=int,
+        default=10,
+        help="Network timeout in seconds for HTTP and TLS checks (default: 10).",
+    )
 
     report = subparsers.add_parser("report", help="Render a saved JSON scan report.")
     report.add_argument("source", help="Path to a SentinelDeck JSON report.")
@@ -32,7 +41,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "scan":
         try:
-            report = scan_domain(args.target)
+            report = scan_domain(args.target, timeout=args.timeout)
         except ValueError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2

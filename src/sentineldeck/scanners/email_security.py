@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import subprocess
-from typing import Callable
+from collections.abc import Callable
 
 DnsQuery = Callable[[str, str], str]
 

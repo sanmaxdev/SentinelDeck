@@ -69,6 +69,15 @@ def build_findings(checks: dict) -> list[Finding]:
             recommendation="Install a valid certificate from a trusted CA and verify the full chain.",
             evidence={"error": tls.get("error")},
         ))
+    elif tls.get("expired"):
+        findings.append(Finding(
+            id="tls-expired",
+            title="TLS certificate has expired",
+            severity="high",
+            description="The TLS certificate is past its expiry date and browsers will reject it.",
+            recommendation="Renew and reinstall the certificate immediately to restore trusted HTTPS.",
+            evidence={"days_remaining": tls.get("days_remaining"), "expires_at": tls.get("expires_at")},
+        ))
     elif tls.get("days_remaining") is not None and tls["days_remaining"] < 30:
         findings.append(Finding(
             id="tls-expiring-soon",
@@ -117,7 +126,10 @@ def build_findings(checks: dict) -> list[Finding]:
                 title="DMARC record is missing",
                 severity="medium",
                 description="The domain does not publish DMARC, making spoofed-email handling unclear.",
-                recommendation="Add a DMARC TXT record at _dmarc with at least p=none for monitoring, then move to quarantine or reject.",
+                recommendation=(
+                    "Add a DMARC TXT record at _dmarc with at least p=none for monitoring, "
+                    "then move to quarantine or reject."
+                ),
                 evidence=dmarc,
             ))
         elif dmarc.get("policy") in {None, "none"}:

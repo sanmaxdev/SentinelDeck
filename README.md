@@ -33,6 +33,14 @@ sentineldeck scan example.com --output reports/example.json
 sentineldeck report reports/example.json --html reports/example.html
 ```
 
+The passive checks (DNS, HTTP, TLS, email) run concurrently, so a scan
+finishes close to the speed of the slowest single check. Use `--timeout` to
+bound how long the HTTP and TLS probes wait:
+
+```bash
+sentineldeck scan example.com --timeout 5 --output reports/example.json
+```
+
 Or without installing:
 
 ```bash
@@ -49,6 +57,16 @@ python3 -m sentineldeck.cli scan example.com --output reports/example.json
   "findings": []
 }
 ```
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+ruff check .
+pytest -q
+```
+
+CI runs the linter and test suite against Python 3.10, 3.11, and 3.12.
 
 ## Safety model
 
