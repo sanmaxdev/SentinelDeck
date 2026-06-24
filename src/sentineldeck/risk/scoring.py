@@ -79,4 +79,55 @@ def build_findings(checks: dict) -> list[Finding]:
             evidence={"days_remaining": tls.get("days_remaining"), "expires_at": tls.get("expires_at")},
         ))
 
+    email = checks.get("email_security", {})
+    if email:
+        mx = email.get("mx", {})
+        spf = email.get("spf", {})
+        dmarc = email.get("dmarc", {})
+        if not mx.get("present"):
+            findings.append(Finding(
+                id="mx-missing",
+                title="No MX records found",
+                severity="medium",
+                description="The domain does not publish MX records for receiving email.",
+                recommendation="Publish correct MX records if the domain sends or receives business email.",
+                evidence=mx,
+            ))
+        if not spf.get("present"):
+            findings.append(Finding(
+                id="spf-missing",
+                title="SPF record is missing",
+                severity="medium",
+                description="The domain does not publish an SPF record to restrict allowed mail senders.",
+                recommendation="Add an SPF TXT record that lists approved sending services and ends with -all or ~all.",
+                evidence=spf,
+            ))
+        elif spf.get("policy") in {None, "+all", "?all", "~all"}:
+            findings.append(Finding(
+                id="spf-weak-policy",
+                title="SPF policy is weak",
+                severity="low",
+                description="The SPF record does not use a strict fail policy.",
+                recommendation="Review sending sources and move toward a stricter -all policy when safe.",
+                evidence=spf,
+            ))
+        if not dmarc.get("present"):
+            findings.append(Finding(
+                id="dmarc-missing",
+                title="DMARC record is missing",
+                severity="medium",
+                description="The domain does not publish DMARC, making spoofed-email handling unclear.",
+                recommendation="Add a DMARC TXT record at _dmarc with at least p=none for monitoring, then move to quarantine or reject.",
+                evidence=dmarc,
+            ))
+        elif dmarc.get("policy") in {None, "none"}:
+            findings.append(Finding(
+                id="dmarc-monitor-only",
+                title="DMARC is monitor-only",
+                severity="low",
+                description="The domain publishes DMARC but does not request enforcement.",
+                recommendation="After monitoring legitimate mail flow, move DMARC policy to quarantine or reject.",
+                evidence=dmarc,
+            ))
+
     return findings

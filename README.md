@@ -13,6 +13,7 @@ It turns quick domain checks into clean JSON reports today, then client-ready HT
 - HTTPS reachability
 - HTTP security headers
 - TLS certificate expiry
+- MX, SPF, and DMARC email-security posture
 - Risk scoring with actionable findings
 - JSON report export
 
@@ -57,7 +58,7 @@ SentinelDeck is **passive-first**. The MVP avoids intrusive vulnerability scanni
 - [x] JSON report export
 - [x] HTTP header checks
 - [x] TLS expiry check
-- [ ] SPF/DMARC/MX checks
+- [x] SPF/DMARC/MX checks
 - [ ] HTML report
 - [ ] PDF export
 - [ ] Screenshot evidence
