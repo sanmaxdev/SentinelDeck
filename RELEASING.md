@@ -30,8 +30,9 @@ you a manual approval gate before each publish.
 
 ## Cutting a release
 
-1. Bump `version` in `pyproject.toml`, following
-   [semantic versioning](https://semver.org).
+1. Bump `__version__` in `src/sentineldeck/__init__.py`, following
+   [semantic versioning](https://semver.org). The package version is read from
+   it, so this is the only place to change.
 2. In `CHANGELOG.md`, move the `[Unreleased]` notes under a new dated heading for
    the version, and leave a fresh empty `[Unreleased]` section above it.
 3. Commit both changes to `main`.

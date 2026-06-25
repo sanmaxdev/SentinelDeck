@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 
-from sentineldeck import __version__
+from sentineldeck import __version__, tui
 from sentineldeck.alerts import send_alert, should_alert
 from sentineldeck.diff import ReportDelta, diff_reports
 from sentineldeck.monitor import DEFAULT_STATE_DIR, monitor_domain
@@ -22,7 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Passive attack-surface radar for small businesses.",
     )
     parser.add_argument("--version", action="version", version=f"SentinelDeck {__version__}")
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command", required=False, metavar="command")
 
     scan = subparsers.add_parser("scan", help="Run a safe passive scan against a domain.")
     scan.add_argument("target", help="Domain to scan, e.g. example.com")
@@ -131,8 +131,13 @@ def _format_diff_summary(delta: ReportDelta) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    tui.init_stream()
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command is None:
+        print(tui.home_screen())
+        return 0
 
     if args.command == "scan":
         suppressions = None
@@ -149,9 +154,13 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
         if args.output:
-            path = write_json_report(report, args.output)
-            print(f"Report written: {path}")
-        if args.pretty or not args.output:
+            print(f"Report written: {write_json_report(report, args.output)}")
+        if args.pretty:
+            print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+        elif sys.stdout.isatty():
+            print(tui.render_scan_summary(report))
+        elif not args.output:
+            # Piped or redirected with no file target: emit JSON so pipelines work.
             print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
         print(f"SentinelDeck score: {report.risk_score}/100 grade={report.grade} findings={len(report.findings)}")
         return 0

@@ -6,6 +6,20 @@ to follow semantic versioning once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added
+
+- A branded home screen. Running `sentineldeck` with no command now shows the
+  logo, the available commands, quick-start examples, and a tip in the
+  SentinelDeck colours, instead of an argument error.
+- Colorized scan output. An interactive terminal shows a grade banner and
+  severity-coloured findings; the raw JSON is still emitted when the output is
+  piped or `--pretty` is passed, so automation is unaffected.
+
+### Fixed
+
+- The `cryptography` deprecation warnings no longer leak into scan output (the
+  timezone-aware certificate accessors are used when available).
+
 ## [0.1.0] - 2026-06-25
 
 First public release: one safe, passive scan turns a domain into a risk score,

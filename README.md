@@ -195,6 +195,9 @@ pip install -e ".[dev]"
 
 ## Usage
 
+Run `sentineldeck` with no arguments at any time for a colored overview of the
+commands and examples.
+
 Scan a domain and write a JSON report:
 
 ```bash

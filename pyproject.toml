@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sentineldeck"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Passive attack-surface visibility and client-ready security reports for small businesses."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,6 +38,9 @@ dev = ["pytest>=7", "ruff>=0.4"]
 
 [project.scripts]
 sentineldeck = "sentineldeck.cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "sentineldeck.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

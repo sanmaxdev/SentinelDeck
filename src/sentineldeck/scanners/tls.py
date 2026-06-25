@@ -88,8 +88,11 @@ def summarize_certificate(
     directly rather than relying on a validated chain.
     """
     now = now or datetime.now(timezone.utc)
-    not_after = _aware(cert.not_valid_after)
-    not_before = _aware(cert.not_valid_before)
+    # Prefer cryptography's timezone-aware accessors (42+); fall back to the
+    # legacy naive properties only on older versions, avoiding the deprecation
+    # warning that otherwise leaks into scan output.
+    not_after = getattr(cert, "not_valid_after_utc", None) or _aware(cert.not_valid_after)
+    not_before = getattr(cert, "not_valid_before_utc", None) or _aware(cert.not_valid_before)
     key_type, key_bits = _public_key_summary(cert)
     san = _san_dns_names(cert)
     try:
