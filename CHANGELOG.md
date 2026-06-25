@@ -8,6 +8,12 @@ to follow semantic versioning once it reaches 1.0.
 
 ### Added
 
+- Remediation intelligence. Every finding now carries a concrete copy-paste fix
+  (the exact DNS record, HTTP header, or server config) with an authoritative
+  reference, in both the JSON and HTML reports. The HTML report gains an
+  interactive Remediation Simulator: tick the fixes you plan to make and the
+  projected score and grade update live, with a one-click "quick wins" that
+  selects the fewest fixes needed to reach grade A.
 - `diff` command that compares two saved scan reports and reports what is new,
   what was resolved, score and grade movement, and severity escalations. It
   renders a themed HTML change report (`--html`), emits the structured delta

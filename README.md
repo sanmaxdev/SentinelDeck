@@ -22,7 +22,7 @@ SentinelDeck inspects the public-facing posture of a domain across DNS, HTTP,
 TLS, and email authentication, using only the kind of normal lookups any browser
 or mail server would make. There is no intrusive scanning, no exploitation, and
 nothing a domain owner would not expect. The result is a risk score, an A to F
-grade, and a set of prioritised findings with concrete remediation steps.
+grade, and a set of prioritised findings, each with a concrete copy-paste fix.
 
 It is built for the people who need that picture fast: an agency qualifying a
 prospect, a consultant producing a client report, or a small team checking its
@@ -70,6 +70,20 @@ own footprint.
       Structured JSON for automation, a polished dark and red HTML report for
       clients, a shareable score card, an embeddable grade badge, and an HTML
       change report.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>Copy-paste remediation</h3>
+      Every finding ships the exact fix, not just advice: the precise DNS record,
+      HTTP header, or server config that resolves it, each with an authoritative
+      reference. Carried in both the JSON and the HTML report.
+    </td>
+    <td width="50%" valign="top">
+      <h3>Interactive remediation simulator</h3>
+      The HTML report lets a client tick off the fixes they plan to make and
+      watch the projected score and grade climb live, with one-click "quick wins"
+      that picks the shortest path to grade A.
     </td>
   </tr>
 </table>

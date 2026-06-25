@@ -32,6 +32,42 @@ def score_findings(findings: list[Finding]) -> int:
     )
 
 
+def _is_scored(finding: Finding) -> bool:
+    return finding.confidence != "indeterminate" and SEVERITY_POINTS.get(finding.severity.lower(), 0) > 0
+
+
+def quick_wins(findings: list[Finding]) -> list[Finding]:
+    """Scored findings ordered by how much risk each one removes, highest first."""
+    return sorted(
+        (f for f in findings if _is_scored(f)),
+        key=lambda f: SEVERITY_POINTS.get(f.severity.lower(), 0),
+        reverse=True,
+    )
+
+
+def path_to_grade(findings: list[Finding], target_grade: str = "A") -> list[Finding]:
+    """The smallest set of fixes that reaches ``target_grade``.
+
+    Grades are score bands, so we greedily retire the highest-impact findings
+    until the remaining score drops into the target band. Returns the findings to
+    fix, in fix order; empty when the target is already met.
+    """
+    ceiling = _grade_ceiling(target_grade)
+    remaining = score_findings(findings)
+    plan: list[Finding] = []
+    for finding in quick_wins(findings):
+        if remaining <= ceiling:
+            break
+        remaining -= SEVERITY_POINTS.get(finding.severity.lower(), 0)
+        plan.append(finding)
+    return plan
+
+
+def _grade_ceiling(target_grade: str) -> int:
+    # Highest score that still earns the target grade (mirrors grade()).
+    return {"A": 19, "B": 39, "C": 59, "D": 79, "F": 100}.get(target_grade.upper(), 19)
+
+
 def _email_confidence(section: dict) -> str:
     return "indeterminate" if section.get("status") == "error" else "confirmed"
 

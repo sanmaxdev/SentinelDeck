@@ -56,6 +56,17 @@ def test_render_html_report_escapes_user_controlled_content():
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
 
 
+def test_render_html_report_includes_simulator_and_copy_paste_fixes():
+    html = render_html_report(sample_report())
+
+    assert "Remediation Simulator" in html
+    assert 'id="sim-list"' in html
+    assert "Apply quick wins" in html
+    # The CSP finding carries a concrete header fix snippet.
+    assert "Content-Security-Policy: default-src" in html
+    assert "FIX" in html
+
+
 def test_write_html_report_creates_parent_directory(tmp_path):
     output = tmp_path / "reports" / "example.html"
 

@@ -1,0 +1,95 @@
+from sentineldeck.models import Finding
+from sentineldeck.remediation import attach_remediations, remediation_for
+from sentineldeck.risk.scoring import path_to_grade, quick_wins
+
+
+def f(id, severity="medium", evidence=None, confidence="confirmed"):
+    return Finding(
+        id=id,
+        title=id,
+        severity=severity,
+        description="d",
+        recommendation="r",
+        evidence=evidence or {},
+        confidence=confidence,
+    )
+
+
+def test_remediation_hsts_snippet():
+    fix = remediation_for(f("missing-strict-transport-security"), "example.com")
+
+    assert fix["kind"] == "http"
+    assert "Strict-Transport-Security" in fix["snippet"]
+    assert "RFC 6797" in fix["references"]
+
+
+def test_remediation_dmarc_uses_target():
+    fix = remediation_for(f("dmarc-missing"), "acme.test")
+
+    assert fix["kind"] == "dns"
+    assert "_dmarc.acme.test" in fix["snippet"]
+    assert "v=DMARC1" in fix["snippet"]
+
+
+def test_remediation_caa_uses_target():
+    fix = remediation_for(f("caa-missing", severity="low"), "acme.test")
+
+    assert 'acme.test.    IN  CAA  0 issue "letsencrypt.org"' in fix["snippet"]
+
+
+def test_remediation_spf_weak_hardens_the_actual_record():
+    finding = f("spf-weak-policy", severity="low", evidence={"records": ["v=spf1 include:x ~all"]})
+
+    fix = remediation_for(finding, "example.com")
+
+    assert "v=spf1 include:x ~all" in fix["snippet"]  # the "from"
+    assert "v=spf1 include:x -all" in fix["snippet"]  # the hardened "to"
+
+
+def test_remediation_generic_header_fallback():
+    finding = f("missing-x-content-type-options", evidence={"checked_header": "x-content-type-options"})
+
+    fix = remediation_for(finding, "example.com")
+
+    assert fix is not None
+    assert "nosniff" in fix["snippet"]
+
+
+def test_remediation_unknown_finding_returns_none():
+    assert remediation_for(f("domain-newly-registered", severity="low"), "example.com") is None
+
+
+def test_attach_remediations_populates_in_place():
+    findings = [f("missing-content-security-policy"), f("domain-newly-registered", severity="low")]
+
+    attach_remediations(findings, "example.com")
+
+    assert findings[0].remediation is not None
+    assert "Content-Security-Policy" in findings[0].remediation["snippet"]
+    assert findings[1].remediation is None
+
+
+def test_quick_wins_orders_by_impact():
+    findings = [f("a", "low"), f("b", "medium"), f("c", "high")]
+
+    assert [x.id for x in quick_wins(findings)] == ["c", "b", "a"]
+
+
+def test_quick_wins_excludes_indeterminate_and_zero_point():
+    findings = [f("a", "medium"), f("b", "info"), f("c", "medium", confidence="indeterminate")]
+
+    assert [x.id for x in quick_wins(findings)] == ["a"]
+
+
+def test_path_to_grade_returns_minimal_set():
+    # medium(12) x3 + low(5) = 41 -> grade C; fixing the two mediums reaches 17 (< 20 -> A).
+    findings = [f("m1", "medium"), f("m2", "medium"), f("m3", "medium"), f("l1", "low")]
+
+    plan = path_to_grade(findings, "A")
+
+    assert len(plan) == 2
+    assert all(p.severity == "medium" for p in plan)
+
+
+def test_path_to_grade_empty_when_already_met():
+    assert path_to_grade([f("l1", "low")], "A") == []

@@ -17,6 +17,9 @@ class Finding:
     # check could not run conclusively (e.g. DNS unreachable, DKIM selector
     # guessing). Indeterminate findings are reported but never scored.
     confidence: str = "confirmed"
+    # Concrete copy-paste fix for this finding (DNS record / header / config),
+    # populated by the remediation engine. None when no canned fix applies.
+    remediation: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

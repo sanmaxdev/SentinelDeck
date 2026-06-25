@@ -3,6 +3,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 
 from sentineldeck.models import ScanReport
+from sentineldeck.remediation import attach_remediations
 from sentineldeck.risk.scoring import build_findings, grade, score_findings
 from sentineldeck.scanners.dns_hygiene import analyze_dns_hygiene
 from sentineldeck.scanners.dns_lookup import Resolver, resolve  # noqa: F401 - resolve re-exported for tests
@@ -60,6 +61,7 @@ def scan_domain(target: str, timeout: int = DEFAULT_TIMEOUT) -> ScanReport:
         "domain_intel": results["domain_intel"],
     }
     report.findings = build_findings(report.checks)
+    attach_remediations(report.findings, domain)
     report.risk_score = score_findings(report.findings)
     report.grade = grade(report.risk_score)
     return report

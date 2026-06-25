@@ -46,7 +46,9 @@ src = ["src", "tests"]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
-# Report renderers are large inline templates with long markup/CSS lines.
+# Report renderers and the remediation snippets are inline templates with long
+# markup, CSS, and config lines.
 "src/sentineldeck/reporters/html_report.py" = ["E501"]
 "src/sentineldeck/reporters/badge.py" = ["E501"]
 "src/sentineldeck/reporters/diff_report.py" = ["E501"]
+"src/sentineldeck/remediation.py" = ["E501"]
