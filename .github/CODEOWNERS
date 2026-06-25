@@ -1,0 +1,4 @@
+# Every change to the repository requires review from the owner before it can
+# merge into main (enforced by the "Protect main" ruleset, which requires
+# code-owner review on pull requests).
+*       @sanmaxdev
