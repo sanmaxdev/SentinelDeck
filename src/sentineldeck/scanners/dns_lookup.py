@@ -12,8 +12,12 @@ separately so callers can tell "no such record" apart from "could not resolve".
 """
 from __future__ import annotations
 
+import json
 import re
 import subprocess
+import urllib.parse
+import urllib.request
+from collections.abc import Callable
 from typing import Any
 
 try:  # pragma: no cover - import guard
@@ -29,9 +33,45 @@ OK = "ok"  # the query executed (zero or more records)
 NXDOMAIN = "nxdomain"  # the name authoritatively does not exist
 ERROR = "error"  # the resolver could not be reached / timed out
 
+USER_AGENT = "SentinelDeck/0.1"
+# Google's JSON DNS-over-HTTPS endpoint, used only as a fallback over port 443.
+DOH_ENDPOINT = "https://dns.google/resolve"
+# Numeric RR type codes, used to keep only answers of the requested type (DoH
+# responses can include CNAME hops and other records in the Answer section).
+DOH_TYPE_CODES = {
+    "A": 1, "NS": 2, "CNAME": 5, "SOA": 6, "MX": 15,
+    "TXT": 16, "AAAA": 28, "DNSKEY": 48, "CAA": 257,
+}
 
-def resolve(name: str, record_type: str, timeout: float = 5.0) -> tuple[list[str], str]:
-    """Resolve ``name``/``record_type`` and return ``(records, status)``."""
+# A DoH fetcher takes (name, record_type, timeout) and returns the parsed JSON
+# response, or None when the request fails. Injectable for offline testing.
+DohFetcher = Callable[[str, str, float], "dict[str, Any] | None"]
+
+
+def resolve(
+    name: str,
+    record_type: str,
+    timeout: float = 5.0,
+    *,
+    doh_fetcher: DohFetcher | None = None,
+    enable_doh: bool = True,
+) -> tuple[list[str], str]:
+    """Resolve ``name``/``record_type`` and return ``(records, status)``.
+
+    Direct port-53 DNS is blocked on some networks (corporate egress filters,
+    captive portals, locked-down hotspots). When the direct query cannot reach a
+    resolver at all, we fall back to DNS-over-HTTPS on port 443 so that MX, SPF,
+    DMARC, CAA, and DNSKEY checks still resolve instead of degrading to
+    *unverified*. The fallback never overrides an authoritative answer: it runs
+    only when the direct path returns ``ERROR``.
+    """
+    records, status = _resolve_direct(name, record_type, timeout)
+    if status == ERROR and enable_doh:
+        return _resolve_doh(name, record_type, timeout, doh_fetcher or _doh_fetch)
+    return records, status
+
+
+def _resolve_direct(name: str, record_type: str, timeout: float) -> tuple[list[str], str]:
     if _HAS_DNSPYTHON:
         return _resolve_dnspython(name, record_type, timeout)
     return _resolve_subprocess(name, record_type, timeout)
@@ -73,6 +113,48 @@ def _format_answers(answers: Any, record_type: str) -> list[str]:
         else:
             records.append(rdata.to_text())
     return records
+
+
+def _doh_fetch(name: str, record_type: str, timeout: float) -> dict[str, Any] | None:
+    url = f"{DOH_ENDPOINT}?name={urllib.parse.quote(name)}&type={urllib.parse.quote(record_type)}"
+    request = urllib.request.Request(
+        url, headers={"User-Agent": USER_AGENT, "Accept": "application/dns-json"}
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read().decode("utf-8", "replace"))
+    except Exception:  # noqa: BLE001 - any failure simply means no DoH answer
+        return None
+
+
+def _resolve_doh(
+    name: str, record_type: str, timeout: float, fetcher: DohFetcher
+) -> tuple[list[str], str]:
+    data = fetcher(name, record_type, timeout)
+    if not data:
+        return [], ERROR
+    status_code = data.get("Status")
+    if status_code == 3:  # NXDOMAIN
+        return [], NXDOMAIN
+    if status_code != 0:  # any non-NOERROR rcode: treat as unresolved
+        return [], ERROR
+    wanted = DOH_TYPE_CODES.get(record_type)
+    records = [
+        _format_doh_record(record_type, answer.get("data", ""))
+        for answer in data.get("Answer", [])
+        if wanted is None or answer.get("type") == wanted
+    ]
+    return [record for record in records if record], OK
+
+
+def _format_doh_record(record_type: str, data: str) -> str:
+    data = data.strip()
+    if record_type == "TXT":
+        # DoH returns TXT data quoted, and long records as adjacent quoted
+        # chunks; strip the quotes and concatenate to match the dnspython output.
+        parts = re.findall(r'"([^"]*)"', data)
+        return "".join(parts) if parts else data.strip('"')
+    return data
 
 
 def _resolve_subprocess(name: str, record_type: str, timeout: float) -> tuple[list[str], str]:

@@ -12,7 +12,12 @@ to follow semantic versioning once it reaches 1.0.
   what was resolved, score and grade movement, and severity escalations. It
   renders a themed HTML change report (`--html`), emits the structured delta
   (`--json` / `-o`), and exits non-zero with `--exit-code` when the posture
-  regresses — the foundation for scheduled monitoring and alerting.
+  regresses. This is the foundation for scheduled monitoring and alerting.
+- DNS-over-HTTPS fallback in the resolver: when direct port-53 DNS cannot reach a
+  nameserver (blocked egress, captive portals, locked-down networks), the MX,
+  SPF, DMARC, CAA, and DNSKEY lookups fall back to DoH over port 443 instead of
+  degrading to unverified. The fallback runs only on a hard resolver failure and
+  never overrides an authoritative answer.
 - Deep TLS inspection using the `cryptography` library: the leaf certificate is
   parsed directly, so subject, SANs, key type and size, signature algorithm,
   self-signed status, and hostname match are reported even when the chain does
