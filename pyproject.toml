@@ -49,6 +49,13 @@ sentineldeck = ["py.typed"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 
+[tool.bandit]
+# Patterns inherent to a passive network scanner, reviewed as safe:
+#   B404/B603 - the dig/host DNS fallback runs a fixed argv with no shell
+#   B310      - urlopen targets are https/http URLs we construct from a domain
+#   B112      - retry loops continue on a failed attempt
+skips = ["B404", "B603", "B310", "B112"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py310"

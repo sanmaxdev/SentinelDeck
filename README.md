@@ -19,7 +19,7 @@
   <tr>
     <td><b>Code quality</b></td>
     <td>
-      <a href="https://github.com/sanmaxdev/SentinelDeck/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/sanmaxdev/SentinelDeck/codeql.yml?style=flat-square&labelColor=0a0a0f&color=dc2626&label=CodeQL"></a>
+      <a href="https://github.com/sanmaxdev/SentinelDeck/actions/workflows/security.yml"><img alt="security" src="https://img.shields.io/github/actions/workflow/status/sanmaxdev/SentinelDeck/security.yml?style=flat-square&labelColor=0a0a0f&color=dc2626&label=security"></a>
       <a href="https://github.com/sanmaxdev/SentinelDeck/blob/main/.pre-commit-config.yaml"><img alt="pre-commit" src="https://img.shields.io/badge/pre--commit-enabled-dc2626?style=flat-square&labelColor=0a0a0f&logo=pre-commit&logoColor=white"></a>
     </td>
   </tr>

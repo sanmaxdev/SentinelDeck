@@ -1,0 +1,26 @@
+name: Security
+
+# Runs Bandit static analysis on every push. This works on public and private
+# repositories with no extra settings (unlike CodeQL, which needs code scanning
+# or GitHub Advanced Security enabled). Dependency vulnerabilities are tracked
+# separately by Dependabot (.github/dependabot.yml).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  bandit:
+    name: SAST (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install bandit
+        run: python -m pip install --upgrade pip bandit
+      - name: Run bandit
+        run: bandit -r src -c pyproject.toml
