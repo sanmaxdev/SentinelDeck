@@ -168,11 +168,10 @@ Every issue is scored by severity into a 0 to 100 risk score and an A to F grade
 
 SentinelDeck requires **Python 3.10 or newer**.
 
-From PyPI (available once the first release is published, see
-[RELEASING.md](RELEASING.md)):
+From PyPI:
 
 ```bash
-pip install sentineldeck
+pip install -U sentineldeck
 ```
 
 From source:
