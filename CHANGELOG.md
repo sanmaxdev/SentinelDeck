@@ -8,6 +8,11 @@ to follow semantic versioning once it reaches 1.0.
 
 ### Added
 
+- `diff` command that compares two saved scan reports and reports what is new,
+  what was resolved, score and grade movement, and severity escalations. It
+  renders a themed HTML change report (`--html`), emits the structured delta
+  (`--json` / `-o`), and exits non-zero with `--exit-code` when the posture
+  regresses — the foundation for scheduled monitoring and alerting.
 - Deep TLS inspection using the `cryptography` library: the leaf certificate is
   parsed directly, so subject, SANs, key type and size, signature algorithm,
   self-signed status, and hostname match are reported even when the chain does

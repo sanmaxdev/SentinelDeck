@@ -49,3 +49,4 @@ select = ["E", "F", "I", "UP", "B"]
 # Report renderers are large inline templates with long markup/CSS lines.
 "src/sentineldeck/reporters/html_report.py" = ["E501"]
 "src/sentineldeck/reporters/badge.py" = ["E501"]
+"src/sentineldeck/reporters/diff_report.py" = ["E501"]

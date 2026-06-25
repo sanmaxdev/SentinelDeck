@@ -71,8 +71,20 @@ sentineldeck report reports/example.json \
   --badge reports/example-badge.svg
 ```
 
-Useful flags: `--pretty` prints the full JSON to stdout, and `--timeout`
-bounds the HTTP/TLS probes.
+Track how a domain's posture changes between two scans:
+
+```bash
+sentineldeck diff reports/example-may.json reports/example-june.json \
+  --html reports/example-change.html
+```
+
+`diff` shows what is new, what was resolved, score and grade movement, and any
+severity escalations. It exits non-zero with `--exit-code` when the posture
+regresses (a new high/critical finding or a higher score), so it drops straight
+into a cron job or CI step for scheduled monitoring.
+
+Useful flags: `--pretty` prints the full JSON to stdout, `--timeout` bounds the
+HTTP/TLS probes, and `diff --json` / `diff -o` emit the structured delta.
 
 ## Example output
 
@@ -95,7 +107,8 @@ src/sentineldeck/
 ├── scanners/           # one module per surface: dns, dns_hygiene, tls,
 │                       #   http_headers, email_security, domain_intel
 ├── risk/scoring.py     # turns raw check results into scored findings
-├── reporters/          # json, html, and svg (card + badge) renderers
+├── diff.py             # compares two reports into a structured change delta
+├── reporters/          # json, html, svg (card + badge), and diff renderers
 └── models.py           # Finding and ScanReport data models
 ```
 
@@ -123,8 +136,9 @@ domains you own or are authorised to assess.
 - [x] Passive DNS, HTTP, TLS, and email checks
 - [x] Deep certificate inspection, DNS hygiene, and domain intelligence
 - [x] JSON, HTML, score card, and badge outputs
+- [x] Scan-to-scan diffing and change reports (foundation for monitoring)
 - [ ] PDF export
-- [ ] Scheduled monitoring
+- [ ] Scheduled monitoring runner
 - [ ] Telegram / email alerts
 
 ## Contributing
