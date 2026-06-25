@@ -155,10 +155,10 @@ own footprint.
 
 | Area | Checks |
 | --- | --- |
-| **DNS** | Resolution, CAA issuance control, DNSSEC |
+| **DNS** | Resolution, CAA issuance control, DNSSEC, nameserver redundancy, IPv6 (AAAA) readiness, DANE/TLSA |
 | **HTTP** | HTTPS reachability, HTTP to HTTPS redirect, security-header presence **and** value quality, security.txt, cookie flags, version disclosure |
 | **TLS** | Trust and failure reason (expired, self-signed, hostname mismatch, untrusted), expiry, protocol version, key strength, signature algorithm, hostname match |
-| **Email** | MX, SPF (policy, multiple records, 10-lookup limit), DMARC (policy, subdomain policy, enforcement coverage), DKIM, MTA-STS, TLS-RPT, BIMI |
+| **Email** | MX, SPF (policy, multiple records, 10-lookup limit), DMARC (policy, subdomain policy, enforcement coverage), DKIM (presence + key strength), MTA-STS (record + policy validation), TLS-RPT, BIMI |
 | **Domain** | Registrar, registration age, and expiry via RDAP |
 | **Subdomains** | Public subdomain discovery via certificate transparency (crt.sh, CertSpotter), sensitive-name flagging, and dangling-CNAME takeover detection |
 

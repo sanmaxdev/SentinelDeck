@@ -402,6 +402,17 @@ def _email_findings(email: dict) -> list[Finding]:
             confidence="indeterminate",
         ))
 
+    if dkim.get("present") and dkim.get("key_bits") is not None and dkim["key_bits"] < 2048:
+        bits = dkim["key_bits"]
+        findings.append(Finding(
+            id="dkim-weak-key",
+            title="DKIM uses a weak key",
+            severity="medium" if bits < 1024 else "low",
+            description=f"The DKIM public key is {bits}-bit; modern guidance is at least 2048-bit RSA.",
+            recommendation="Rotate the DKIM key to at least 2048-bit RSA.",
+            evidence={"key_bits": bits, "selectors": dkim.get("found_selectors")},
+        ))
+
     # Advanced inbound-mail hardening, only relevant when the domain receives mail.
     mta_sts = email.get("mta_sts", {})
     tls_rpt = email.get("tls_rpt", {})
@@ -416,6 +427,29 @@ def _email_findings(email: dict) -> list[Finding]:
             recommendation="Publish an MTA-STS policy to require TLS for inbound email.",
             evidence=mta_sts,
             confidence=_email_confidence(mta_sts),
+        ))
+
+    mta_sts_policy = mta_sts.get("policy") if mta_sts.get("present") else None
+    if mta_sts_policy and not mta_sts_policy.get("valid"):
+        findings.append(Finding(
+            id="mta-sts-policy-invalid",
+            title="MTA-STS policy is missing or invalid",
+            severity="low",
+            description="MTA-STS is advertised in DNS, but its HTTPS policy file is missing or malformed.",
+            recommendation=(
+                "Serve a valid policy at https://mta-sts.<domain>/.well-known/mta-sts.txt "
+                "with mode: enforce."
+            ),
+            evidence=mta_sts_policy,
+        ))
+    elif mta_sts_policy and mta_sts_policy.get("mode") != "enforce":
+        findings.append(Finding(
+            id="mta-sts-not-enforced",
+            title="MTA-STS is not in enforce mode",
+            severity="info",
+            description=f"The MTA-STS policy uses mode={mta_sts_policy.get('mode')}, so TLS is not actually required.",
+            recommendation="Move the MTA-STS policy to mode: enforce once testing confirms mail flow.",
+            evidence=mta_sts_policy,
         ))
 
     if mx.get("present") and tls_rpt and not tls_rpt.get("present"):
@@ -471,6 +505,39 @@ def _dns_hygiene_findings(hygiene: dict) -> list[Finding]:
             recommendation="Enable DNSSEC at your DNS provider and registrar to protect against DNS spoofing.",
             evidence=dnssec,
             confidence="indeterminate" if dnssec.get("status") == "error" else "confirmed",
+        ))
+
+    ns = hygiene.get("ns", {})
+    if ns.get("status") == "ok" and ns.get("count", 0) == 1:
+        findings.append(Finding(
+            id="single-nameserver",
+            title="Only one nameserver",
+            severity="low",
+            description="The domain has a single nameserver, which is a DNS single point of failure.",
+            recommendation="Use at least two nameservers, ideally on separate networks.",
+            evidence={"count": ns.get("count"), "records": ns.get("records")},
+        ))
+
+    ipv6 = hygiene.get("ipv6", {})
+    if ipv6.get("status") == "ok" and not ipv6.get("present"):
+        findings.append(Finding(
+            id="no-ipv6",
+            title="No IPv6 (AAAA) records",
+            severity="info",
+            description="The domain publishes no AAAA records, so it is not reachable over IPv6.",
+            recommendation="Add AAAA records to make the service reachable over IPv6.",
+            evidence=ipv6,
+        ))
+
+    dane = hygiene.get("dane", {})
+    if dnssec.get("enabled") and dane and not dane.get("present"):
+        findings.append(Finding(
+            id="dane-missing",
+            title="DANE/TLSA is not configured",
+            severity="info",
+            description="DNSSEC is enabled but no TLSA record is published, so DANE is not pinning the certificate.",
+            recommendation="Publish a TLSA record at _443._tcp to pin the certificate via DANE.",
+            evidence=dane,
         ))
 
     return findings

@@ -200,6 +200,44 @@ def _bimi(finding: Finding, target: str) -> Fix:
     )
 
 
+def _single_ns(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Add at least one more nameserver",
+        f"# Use two or more nameservers, ideally on separate networks:\n"
+        f"{target}.    IN  NS  ns1.your-dns-provider.example.\n"
+        f"{target}.    IN  NS  ns2.your-dns-provider.example.",
+        "dns",
+    )
+
+
+def _no_ipv6(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Publish AAAA records for IPv6",
+        f"{target}.    IN  AAAA  2001:db8::1    # replace with your server's IPv6 address",
+        "dns",
+    )
+
+
+def _dane(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Publish a TLSA record (requires DNSSEC)",
+        f"_443._tcp.{target}.    IN  TLSA  3 1 1 <sha256-of-the-cert-public-key>\n"
+        "# 3 1 1 = DANE-EE, SubjectPublicKeyInfo, SHA-256. Generate the hash from your leaf cert.",
+        "dns",
+        "RFC 6698",
+    )
+
+
+def _dkim_weak(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Rotate the DKIM key to 2048-bit RSA",
+        "openssl genrsa -out dkim.key 2048\n"
+        "openssl rsa -in dkim.key -pubout -outform der | openssl base64 -A\n\n"
+        f"selector2._domainkey.{target}.  IN  TXT  \"v=DKIM1; k=rsa; p=<new-base64-key>\"",
+        "dns",
+    )
+
+
 def _security_txt(finding: Finding, target: str) -> Fix:
     return _fix(
         "Publish /.well-known/security.txt",
@@ -252,9 +290,15 @@ _BUILDERS: dict[str, Builder] = {
     "dmarc-monitor-only": _dmarc_monitor,
     "mx-missing": _mx_missing,
     "mta-sts-missing": _mta_sts,
+    "mta-sts-policy-invalid": _mta_sts,
+    "mta-sts-not-enforced": _mta_sts,
     "tls-rpt-missing": _tls_rpt,
     "bimi-missing": _bimi,
+    "dkim-weak-key": _dkim_weak,
     "caa-missing": _caa_missing,
+    "single-nameserver": _single_ns,
+    "no-ipv6": _no_ipv6,
+    "dane-missing": _dane,
     "no-security-txt": _security_txt,
     "dnssec-disabled": _dnssec,
 }

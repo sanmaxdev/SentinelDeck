@@ -1,6 +1,24 @@
+import base64
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
 from sentineldeck.risk.scoring import build_findings
 from sentineldeck.scanners.dns_lookup import parse_mx_records, parse_txt_records
-from sentineldeck.scanners.email_security import analyze_email_security, count_spf_lookups
+from sentineldeck.scanners.email_security import (
+    analyze_email_security,
+    count_spf_lookups,
+    dkim_key_bits,
+    fetch_mta_sts_policy,
+)
+
+
+def _dkim_record(bits):
+    key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
+    der = key.public_key().public_bytes(
+        serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    return f"v=DKIM1; k=rsa; p={base64.b64encode(der).decode()}"
 
 
 def make_resolver(records_by_key, status="ok"):
@@ -83,10 +101,12 @@ def test_analyze_detects_mta_sts_tls_rpt_and_bimi():
         ("_smtp._tls.example.com", "TXT"): ["v=TLSRPTv1; rua=mailto:t@example.com"],
         ("default._bimi.example.com", "TXT"): ["v=BIMI1; l=https://example.com/logo.svg"],
     })
+    policy = "version: STSv1\nmode: enforce\nmx: mail.example.com\nmax_age: 604800"
 
-    out = analyze_email_security("example.com", resolver=resolver)
+    out = analyze_email_security("example.com", resolver=resolver, http_fetcher=lambda url: policy)
 
     assert out["mta_sts"]["present"] is True
+    assert out["mta_sts"]["policy"] == {"fetched": True, "mode": "enforce", "valid": True}
     assert out["tls_rpt"]["present"] is True
     assert out["bimi"]["present"] is True
 
@@ -131,6 +151,49 @@ def test_bimi_not_flagged_without_dmarc_enforcement():
     }}
 
     assert "bimi-missing" not in {f.id for f in build_findings(checks)}
+
+
+def test_dkim_key_bits_decodes_the_key_size():
+    assert dkim_key_bits(_dkim_record(2048)) == 2048
+    assert dkim_key_bits("v=DKIM1; k=rsa; p=") is None
+
+
+def test_dkim_weak_key_finding_flags_under_2048():
+    email = {
+        "mx": {"present": True}, "dmarc": {"policy": "none"},
+        "dkim": {"present": True, "key_bits": 1024, "found_selectors": ["s1"]},
+    }
+    findings = {f.id: f for f in build_findings({"email_security": email})}
+
+    assert "dkim-weak-key" in findings
+    assert findings["dkim-weak-key"].severity == "low"
+
+
+def test_strong_dkim_key_is_not_flagged():
+    email = {"mx": {"present": True}, "dmarc": {}, "dkim": {"present": True, "key_bits": 2048}}
+
+    assert "dkim-weak-key" not in {f.id for f in build_findings({"email_security": email})}
+
+
+def test_fetch_mta_sts_policy_parses_and_validates():
+    body = "version: STSv1\nmode: enforce\nmx: mail.example.com\nmax_age: 604800"
+
+    assert fetch_mta_sts_policy("example.com", lambda url: body) == {
+        "fetched": True, "mode": "enforce", "valid": True,
+    }
+    assert fetch_mta_sts_policy("example.com", lambda url: None) == {
+        "fetched": False, "mode": None, "valid": False,
+    }
+
+
+def test_mta_sts_policy_invalid_and_not_enforced_findings():
+    invalid = {"email_security": {"mx": {"present": True}, "dmarc": {},
+               "mta_sts": {"present": True, "policy": {"fetched": False, "mode": None, "valid": False}}}}
+    assert "mta-sts-policy-invalid" in {f.id for f in build_findings(invalid)}
+
+    testing = {"email_security": {"mx": {"present": True}, "dmarc": {},
+               "mta_sts": {"present": True, "policy": {"fetched": True, "mode": "testing", "valid": True}}}}
+    assert "mta-sts-not-enforced" in {f.id for f in build_findings(testing)}
 
 
 def test_email_findings_are_indeterminate_when_dns_errors():

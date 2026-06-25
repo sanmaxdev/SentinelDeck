@@ -66,6 +66,20 @@ def test_remediation_for_email_hardening_records():
         assert needle in fix["snippet"]
 
 
+def test_remediation_for_phase1_findings():
+    for fid, needle in [
+        ("single-nameserver", "IN  NS"),
+        ("no-ipv6", "IN  AAAA"),
+        ("dane-missing", "IN  TLSA"),
+        ("dkim-weak-key", "genrsa"),
+        ("mta-sts-policy-invalid", "mta-sts"),
+        ("mta-sts-not-enforced", "mta-sts"),
+    ]:
+        fix = remediation_for(f(fid, "low"), "example.com")
+        assert fix is not None, fid
+        assert needle in fix["snippet"], fid
+
+
 def test_remediation_unknown_finding_returns_none():
     assert remediation_for(f("domain-newly-registered", severity="low"), "example.com") is None
 

@@ -6,6 +6,18 @@ to follow semantic versioning once it reaches 1.0.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-25
+
+### Added
+
+- Email and DNS depth, closing gaps versus internet.nl: DKIM key-strength
+  detection (flags keys under 2048-bit), MTA-STS policy fetch and validation
+  (the HTTPS policy file, not just the DNS record), nameserver-redundancy
+  (single-nameserver) checks, IPv6/AAAA readiness, and DANE/TLSA detection. Each
+  carries a copy-paste fix.
+
+## [0.2.0] - 2026-06-25
+
 ### Added
 
 - A branded home screen. Running `sentineldeck` with no command now shows the
