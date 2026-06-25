@@ -9,6 +9,18 @@
 
 </div>
 
+> **Scan any domain you are authorised to assess in one line. Nothing to install:**
+
+```bash
+pipx run sentineldeck scan example.com        # or:  uvx sentineldeck scan example.com
+```
+
+Prefer a permanent install? `pip install -U sentineldeck`, then `sentineldeck scan example.com`.
+
+<p align="center">
+  <img src="assets/cli.svg" alt="SentinelDeck command-line output" width="720">
+</p>
+
 <table>
   <tr>
     <td><b>Testing</b></td>
@@ -59,10 +71,6 @@ findings, each with a concrete copy-paste fix.
 It is built for the people who need that picture fast: an agency qualifying a
 prospect, a consultant producing a client report, or a small team checking its
 own footprint.
-
-<p align="center">
-  <img src="assets/cli.svg" alt="SentinelDeck command-line home screen" width="720">
-</p>
 
 ## Contents
 
