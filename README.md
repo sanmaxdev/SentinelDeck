@@ -60,6 +60,10 @@ It is built for the people who need that picture fast: an agency qualifying a
 prospect, a consultant producing a client report, or a small team checking its
 own footprint.
 
+<p align="center">
+  <img src="assets/cli.svg" alt="SentinelDeck command-line home screen" width="720">
+</p>
+
 ## Contents
 
 - [Features](#features)
