@@ -120,6 +120,33 @@ def _render_severity_section(report: ScanReport, severity: str) -> str:
     """
 
 
+def _render_attack_surface(report: ScanReport) -> str:
+    subs = (report.checks or {}).get("subdomains") or {}
+    names = subs.get("subdomains") or []
+    if subs.get("status") != "ok" or not names:
+        return ""
+    sensitive = set(subs.get("sensitive") or [])
+    cap = 80
+    chips = "".join(
+        f'<span class="host{" host-sensitive" if host in sensitive else ""}">{escape(host)}</span>'
+        for host in names[:cap]
+    )
+    more = f'<p class="muted">and {len(names) - cap} more.</p>' if len(names) > cap else ""
+    sens_note = (
+        f'<p class="muted">{len(sensitive)} look potentially sensitive (highlighted in red).</p>'
+        if sensitive
+        else ""
+    )
+    return f"""
+    <section class="severity-section" id="attack-surface">
+      <h2>Attack Surface <span class="count">{subs.get('count', len(names))}</span></h2>
+      <p class="muted">Hostnames discovered in public certificate transparency logs ({escape(str(subs.get('source', 'crt.sh')))}). This is the surface exposed beyond the scanned host.</p>
+      {sens_note}
+      <div class="hosts">{chips}</div>
+      {more}
+    </section>"""
+
+
 def _render_simulator(report: ScanReport) -> str:
     scored = [
         f for f in report.findings
@@ -208,6 +235,7 @@ def render_html_report(report: ScanReport) -> str:
         else ""
     )
     grade = grade_color(report.grade)
+    attack_surface = _render_attack_surface(report)
     simulator = _render_simulator(report)
 
     return f"""<!doctype html>
@@ -276,6 +304,10 @@ def render_html_report(report: ScanReport) -> str:
     .sim-item input {{ width:16px; height:16px; accent-color:var(--accent); flex:0 0 auto; }}
     .sim-pts {{ color:#fda4af; font-variant-numeric:tabular-nums; font-weight:700; font-size:12px; }}
     .sim-title {{ color:#d4d4dd; }}
+    .count {{ font-size:13px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:1px 10px; font-weight:700; vertical-align:middle; }}
+    .hosts {{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }}
+    .host {{ background:#0e0e15; border:1px solid var(--line); border-radius:8px; padding:5px 10px; font-size:12.5px; color:#cbd5e1; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }}
+    .host-sensitive {{ border-color:var(--accent); color:#fda4af; background:rgba(220,38,38,.10); }}
     footer {{ color:var(--muted); margin-top:44px; padding-top:18px; border-top:1px solid var(--line); font-size:13px; }}
   </style>
 </head>
@@ -303,6 +335,8 @@ def render_html_report(report: ScanReport) -> str:
       <h2>Executive Summary</h2>
       <p class="muted">SentinelDeck reviewed the passive DNS, HTTP, TLS, and email-security posture for this target. Findings below are grouped by severity, each with the evidence observed and a copy-paste fix. Items marked <span class="badge badge-info">UNVERIFIED</span> could not be conclusively determined and do not affect the score.</p>
     </section>
+
+    {attack_surface}
 
     {simulator}
 

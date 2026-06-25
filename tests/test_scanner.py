@@ -24,6 +24,7 @@ def test_scan_domain_includes_email_security(monkeypatch):
         lambda domain, resolver=None: {"caa": {"present": True}, "dnssec": {"enabled": True}},
     )
     monkeypatch.setattr("sentineldeck.scanner.analyze_domain_intel", lambda domain, timeout=10: {"status": "error"})
+    monkeypatch.setattr("sentineldeck.scanner.discover_subdomains", lambda domain, timeout=10: {"status": "error"})
 
     report = scan_domain("example.com")
 

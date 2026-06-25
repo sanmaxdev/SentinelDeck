@@ -17,6 +17,7 @@ from sentineldeck.scanners.http_headers import (
     fetch_headers,
     missing_security_headers,
 )
+from sentineldeck.scanners.subdomains import discover_subdomains
 from sentineldeck.scanners.tls import inspect_tls
 
 DEFAULT_TIMEOUT = 10
@@ -43,6 +44,7 @@ def scan_domain(target: str, timeout: int = DEFAULT_TIMEOUT) -> ScanReport:
             "email": pool.submit(analyze_email_security, domain, resolver),
             "dns_hygiene": pool.submit(analyze_dns_hygiene, domain, resolver),
             "domain_intel": pool.submit(analyze_domain_intel, domain, timeout),
+            "subdomains": pool.submit(discover_subdomains, domain, timeout),
         }
         results = {name: future.result() for name, future in futures.items()}
 
@@ -59,6 +61,7 @@ def scan_domain(target: str, timeout: int = DEFAULT_TIMEOUT) -> ScanReport:
         "email_security": results["email"],
         "dns_hygiene": results["dns_hygiene"],
         "domain_intel": results["domain_intel"],
+        "subdomains": results["subdomains"],
     }
     report.findings = build_findings(report.checks)
     attach_remediations(report.findings, domain)

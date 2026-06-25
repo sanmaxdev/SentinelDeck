@@ -67,6 +67,23 @@ def test_render_html_report_includes_simulator_and_copy_paste_fixes():
     assert "FIX" in html
 
 
+def test_render_html_report_shows_attack_surface():
+    report = sample_report()
+    report.checks["subdomains"] = {
+        "status": "ok",
+        "source": "crt.sh",
+        "count": 2,
+        "subdomains": ["dev.example.com", "www.example.com"],
+        "sensitive": ["dev.example.com"],
+    }
+
+    html = render_html_report(report)
+
+    assert "Attack Surface" in html
+    assert "dev.example.com" in html
+    assert "host-sensitive" in html
+
+
 def test_write_html_report_creates_parent_directory(tmp_path):
     output = tmp_path / "reports" / "example.html"
 

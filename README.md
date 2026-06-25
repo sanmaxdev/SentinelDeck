@@ -86,6 +86,20 @@ own footprint.
       that picks the shortest path to grade A.
     </td>
   </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>Attack-surface mapping</h3>
+      Reads certificate transparency logs to discover the domain's public
+      subdomains, lists them in the report, and flags potentially sensitive names
+      such as dev, staging, admin, or vpn.
+    </td>
+    <td width="50%" valign="top">
+      <h3>Resilient by design</h3>
+      Two certificate-transparency sources (crt.sh with a CertSpotter fallback),
+      a DNS-over-HTTPS fallback for blocked networks, and a confidence model that
+      never lets an inconclusive check inflate a score.
+    </td>
+  </tr>
 </table>
 
 ## What it checks

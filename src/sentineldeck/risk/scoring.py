@@ -152,6 +152,10 @@ def build_findings(checks: dict) -> list[Finding]:
     if domain_intel:
         findings.extend(_domain_intel_findings(domain_intel))
 
+    subdomains = checks.get("subdomains", {})
+    if subdomains:
+        findings.extend(_subdomain_findings(subdomains))
+
     return findings
 
 
@@ -424,6 +428,46 @@ def _domain_intel_findings(intel: dict) -> list[Finding]:
             description=f"The domain was registered {age_days} days ago; new domains are common in phishing.",
             recommendation="Confirm this domain is legitimate and expected for the organisation.",
             evidence={"created": intel.get("created"), "registrar": intel.get("registrar")},
+        ))
+
+    return findings
+
+
+def _subdomain_findings(subdomains: dict) -> list[Finding]:
+    findings: list[Finding] = []
+    if subdomains.get("status") != "ok":
+        return findings
+
+    count = subdomains.get("count", 0)
+    if count > 0:
+        findings.append(Finding(
+            id="subdomains-discovered",
+            title=f"{count} subdomain(s) found in certificate transparency logs",
+            severity="info",
+            description=(
+                "Certificate transparency logs publicly record every hostname issued a "
+                "certificate. These make up the attack surface beyond the scanned host."
+            ),
+            recommendation="Review the list and retire or protect any host that should not be public.",
+            evidence={
+                "count": count,
+                "sample": subdomains.get("subdomains", [])[:25],
+                "source": subdomains.get("source"),
+            },
+        ))
+
+    sensitive = subdomains.get("sensitive", [])
+    if sensitive:
+        findings.append(Finding(
+            id="sensitive-subdomains-exposed",
+            title="Potentially sensitive subdomains are publicly visible",
+            severity="low",
+            description=(
+                "Subdomains named like dev, staging, admin, or vpn suggest non-production or "
+                "internal systems that are exposed in certificate transparency logs."
+            ),
+            recommendation="Confirm these hosts are meant to be public; restrict or take down any that are not.",
+            evidence={"subdomains": sensitive},
         ))
 
     return findings

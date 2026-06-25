@@ -8,6 +8,11 @@ to follow semantic versioning once it reaches 1.0.
 
 ### Added
 
+- Subdomain discovery via certificate transparency. The scan now maps a domain's
+  public attack surface by reading CT logs (crt.sh, with a CertSpotter fallback
+  because crt.sh is frequently down), lists the hostnames in the JSON and a new
+  Attack Surface section of the HTML report, and flags potentially sensitive
+  names such as dev, staging, admin, and vpn. Passive and offline-testable.
 - Remediation intelligence. Every finding now carries a concrete copy-paste fix
   (the exact DNS record, HTTP header, or server config) with an authoritative
   reference, in both the JSON and HTML reports. The HTML report gains an
