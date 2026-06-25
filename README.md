@@ -18,7 +18,7 @@ pipx run sentineldeck scan example.com        # or:  uvx sentineldeck scan examp
 Prefer a permanent install? `pip install -U sentineldeck`, then `sentineldeck scan example.com`.
 
 <p align="center">
-  <img src="assets/cli.svg" alt="SentinelDeck command-line output" width="720">
+  <img src="assets/demo.svg" alt="SentinelDeck scanning a domain: grade, findings, and a copy-paste fix" width="720">
 </p>
 
 <table>
