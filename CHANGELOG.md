@@ -6,6 +6,12 @@ to follow semantic versioning once it reaches 1.0.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-25
+
+First public release: one safe, passive scan turns a domain into a risk score,
+an A to F grade, an attack-surface map, copy-paste fixes, and a client-ready
+report.
+
 ### Added
 
 - Suppressions file. `scan --suppress FILE` accepts findings you have reviewed
@@ -69,14 +75,11 @@ to follow semantic versioning once it reaches 1.0.
 - `confidence` field on findings; inconclusive checks are reported but never
   counted toward the score.
 - Concurrent scanning and a configurable `--timeout`.
+- Passive baseline: DNS resolution, HTTP security headers, TLS validity and
+  expiry, and SPF/DMARC/MX email checks, with JSON and HTML reports.
 
 ### Changed
 
 - DNS is resolved in-process with `dnspython` (with a TCP fallback for large
   records) instead of shelling out to `dig`/`host`.
 - HTML report restyled to a professional dark and red theme.
-
-## [0.1.0]
-
-- Initial passive scanner: DNS resolution, HTTP security headers, TLS expiry,
-  and SPF/DMARC/MX checks, with JSON and HTML reports.
