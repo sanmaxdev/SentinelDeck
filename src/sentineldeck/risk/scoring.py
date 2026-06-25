@@ -27,13 +27,17 @@ def score_findings(findings: list[Finding]) -> int:
         sum(
             SEVERITY_POINTS.get(f.severity.lower(), 0)
             for f in findings
-            if f.confidence != "indeterminate"
+            if f.confidence != "indeterminate" and not f.suppressed
         ),
     )
 
 
 def _is_scored(finding: Finding) -> bool:
-    return finding.confidence != "indeterminate" and SEVERITY_POINTS.get(finding.severity.lower(), 0) > 0
+    return (
+        finding.confidence != "indeterminate"
+        and not finding.suppressed
+        and SEVERITY_POINTS.get(finding.severity.lower(), 0) > 0
+    )
 
 
 def quick_wins(findings: list[Finding]) -> list[Finding]:

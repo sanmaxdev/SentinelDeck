@@ -201,6 +201,18 @@ Scan a domain and write a JSON report:
 sentineldeck scan example.com --output reports/example.json
 ```
 
+Accept findings you have already reviewed so they stop affecting the score, by
+listing their ids in a suppressions file:
+
+```bash
+sentineldeck scan example.com --suppress .sentineldeck-ignore
+```
+
+Each line is a finding id (globs allowed, e.g. `subdomain-takeover:*`), and `#`
+starts a comment. Accepted findings still appear under "Accepted" in the report
+but are kept out of the risk score, so a known and accepted risk does not drag
+the grade down on every re-scan.
+
 Render a client-ready HTML report, a shareable score card, and a badge. The HTML
 report includes the attack-surface map and the interactive remediation
 simulator:

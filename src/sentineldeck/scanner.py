@@ -20,11 +20,14 @@ from sentineldeck.scanners.http_headers import (
 from sentineldeck.scanners.subdomains import discover_subdomains
 from sentineldeck.scanners.takeover import detect_takeovers
 from sentineldeck.scanners.tls import inspect_tls
+from sentineldeck.suppressions import apply_suppressions
 
 DEFAULT_TIMEOUT = 10
 
 
-def scan_domain(target: str, timeout: int = DEFAULT_TIMEOUT) -> ScanReport:
+def scan_domain(
+    target: str, timeout: int = DEFAULT_TIMEOUT, suppressions: list[str] | None = None
+) -> ScanReport:
     domain = normalize_domain(target)
     report = ScanReport.empty(domain)
 
@@ -77,6 +80,8 @@ def scan_domain(target: str, timeout: int = DEFAULT_TIMEOUT) -> ScanReport:
     }
     report.findings = build_findings(report.checks)
     attach_remediations(report.findings, domain)
+    if suppressions:
+        apply_suppressions(report.findings, suppressions)
     report.risk_score = score_findings(report.findings)
     report.grade = grade(report.risk_score)
     return report

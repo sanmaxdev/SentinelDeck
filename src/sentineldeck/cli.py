@@ -13,6 +13,7 @@ from sentineldeck.reporters.diff_report import write_diff_report
 from sentineldeck.reporters.html_report import read_json_report, write_html_report
 from sentineldeck.reporters.json_report import write_json_delta, write_json_report
 from sentineldeck.scanner import scan_domain
+from sentineldeck.suppressions import load_suppressions
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -32,6 +33,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=10,
         help="Network timeout in seconds for HTTP and TLS checks (default: 10).",
+    )
+    scan.add_argument(
+        "--suppress",
+        metavar="FILE",
+        help="Accept listed finding ids (one per line, globs allowed); they are kept out of the score.",
     )
 
     report = subparsers.add_parser("report", help="Render a saved JSON scan report.")
@@ -129,8 +135,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "scan":
+        suppressions = None
+        if args.suppress:
+            try:
+                suppressions = load_suppressions(args.suppress)
+            except OSError as exc:
+                print(f"error: cannot read suppressions file: {exc}", file=sys.stderr)
+                return 2
         try:
-            report = scan_domain(args.target, timeout=args.timeout)
+            report = scan_domain(args.target, timeout=args.timeout, suppressions=suppressions)
         except ValueError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2

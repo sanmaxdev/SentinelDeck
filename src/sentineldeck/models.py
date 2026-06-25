@@ -20,6 +20,9 @@ class Finding:
     # Concrete copy-paste fix for this finding (DNS record / header / config),
     # populated by the remediation engine. None when no canned fix applies.
     remediation: dict[str, Any] | None = None
+    # True when accepted via a suppressions file: shown under "Accepted" in the
+    # report but excluded from the score.
+    suppressed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

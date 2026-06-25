@@ -8,6 +8,10 @@ to follow semantic versioning once it reaches 1.0.
 
 ### Added
 
+- Suppressions file. `scan --suppress FILE` accepts findings you have reviewed
+  (finding ids, one per line, globs and `#` comments allowed). Accepted findings
+  still appear in the report under "Accepted" but are excluded from the score, so
+  a known, accepted risk stops dragging the grade down on every re-scan.
 - Email hardening checks for MTA-STS, TLS-RPT, and BIMI. The scan detects these
   records and, when relevant (MTA-STS and TLS-RPT for domains that receive mail,
   BIMI once DMARC is enforced), surfaces an informational finding with a

@@ -84,6 +84,18 @@ def test_render_html_report_shows_attack_surface():
     assert "host-sensitive" in html
 
 
+def test_render_html_report_moves_suppressed_findings_to_accepted():
+    report = sample_report()
+    report.findings[0].suppressed = True  # accept the CSP finding
+
+    html = render_html_report(report)
+
+    assert "Accepted" in html
+    assert report.findings[0].id in html
+    # The accepted finding is dropped from its severity section.
+    assert "Medium Findings" not in html
+
+
 def test_write_html_report_creates_parent_directory(tmp_path):
     output = tmp_path / "reports" / "example.html"
 
