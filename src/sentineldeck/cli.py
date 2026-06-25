@@ -5,7 +5,9 @@ import json
 import sys
 
 from sentineldeck import __version__
+from sentineldeck.alerts import send_alert, should_alert
 from sentineldeck.diff import ReportDelta, diff_reports
+from sentineldeck.monitor import DEFAULT_STATE_DIR, monitor_domain
 from sentineldeck.reporters.badge import write_badge_svg, write_card_svg
 from sentineldeck.reporters.diff_report import write_diff_report
 from sentineldeck.reporters.html_report import read_json_report, write_html_report
@@ -52,6 +54,32 @@ def build_parser() -> argparse.ArgumentParser:
         "--exit-code",
         action="store_true",
         help="Return exit code 1 if the posture regressed (for scheduled monitoring).",
+    )
+
+    monitor = subparsers.add_parser(
+        "monitor", help="Scan a domain, compare to the last run, and alert on regressions."
+    )
+    monitor.add_argument("target", help="Domain to monitor, e.g. example.com")
+    monitor.add_argument(
+        "--state-dir",
+        default=DEFAULT_STATE_DIR,
+        help=f"Directory holding the latest report per domain (default: {DEFAULT_STATE_DIR}).",
+    )
+    monitor.add_argument(
+        "--timeout", type=int, default=10, help="Network timeout in seconds (default: 10)."
+    )
+    monitor.add_argument(
+        "--webhook", help="POST an alert to this URL (Slack, Discord, or any custom endpoint)."
+    )
+    monitor.add_argument(
+        "--alert-on",
+        choices=["regression", "change", "always"],
+        default="regression",
+        help="When to send the webhook alert (default: regression).",
+    )
+    monitor.add_argument("--html", help="Write an HTML change report to this path.")
+    monitor.add_argument(
+        "--exit-code", action="store_true", help="Return exit code 1 if the posture regressed."
     )
     return parser
 
@@ -141,6 +169,31 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(delta.to_dict(), indent=2, sort_keys=True))
 
         print(_format_diff_summary(delta))
+        return 1 if (args.exit_code and delta.regressed) else 0
+
+    if args.command == "monitor":
+        try:
+            result = monitor_domain(args.target, args.state_dir, timeout=args.timeout)
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+
+        current = result["current"]
+        if result["baseline"]:
+            print(
+                f"Baseline saved for {current.target}: "
+                f"score {current.risk_score}/100 grade={current.grade}. "
+                "Run again later to detect changes."
+            )
+            return 0
+
+        delta = result["delta"]
+        print(_format_diff_summary(delta))
+        if args.html:
+            print(f"HTML change report written: {write_diff_report(delta, args.html)}")
+        if args.webhook and should_alert(delta, args.alert_on):
+            sent = send_alert(args.webhook, delta)
+            print(f"Webhook alert: {'sent' if sent else 'failed to send'}")
         return 1 if (args.exit_code and delta.regressed) else 0
 
     parser.print_help()

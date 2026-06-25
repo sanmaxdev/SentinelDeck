@@ -8,6 +8,13 @@ to follow semantic versioning once it reaches 1.0.
 
 ### Added
 
+- `monitor` command for scheduled monitoring. It scans a domain, diffs the
+  result against the report saved from the previous run, and stores the new
+  report as the latest, turning a cron job or scheduled task into a standing
+  watch. With `--webhook` it posts an alert (Slack, Discord, or any custom
+  endpoint) when the posture regresses, `--alert-on change` widens that to any
+  change, and `--exit-code` fails the job on regression. The first run for a
+  domain just establishes a baseline.
 - Subdomain-takeover detection. After discovering subdomains, the scan resolves
   each CNAME and flags any that point to an unclaimed third-party service (GitHub
   Pages, Heroku, S3, Azure, Fastly, Shopify, and more) as a high-severity

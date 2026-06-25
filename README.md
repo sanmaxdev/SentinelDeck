@@ -125,10 +125,10 @@ own footprint.
       and detects dangling CNAMEs an attacker could take over.
     </td>
     <td width="50%" valign="top">
-      <h3>Change tracking and monitoring</h3>
-      Diff any two scans to see what is new, what was resolved, and how the grade
-      moved. A non-zero exit code on regression drops straight into a cron job or
-      CI step.
+      <h3>Monitoring and alerts</h3>
+      Diff any two scans, or run the monitor command on a schedule to scan,
+      compare against the last run, and post a webhook alert (Slack, Discord, or
+      custom) the moment a domain's posture regresses.
     </td>
   </tr>
   <tr>
@@ -224,6 +224,19 @@ movement, and any severity escalations. It exits non-zero with `--exit-code`
 when the posture regresses (a new high or critical finding, or a higher score),
 so it drops straight into a cron job or CI step for scheduled monitoring.
 
+Watch a domain on a schedule and get alerted when it regresses:
+
+```bash
+sentineldeck monitor example.com --webhook https://hooks.slack.com/services/...
+```
+
+The `monitor` command scans, compares against the previous run (stored under
+`.sentineldeck/` by default), and saves the new report as the latest, so a cron
+job or scheduled task becomes a standing watch. With `--webhook` it posts an
+alert (Slack, Discord, or any custom endpoint) when the posture regresses. The
+first run establishes a baseline; use `--alert-on change` to hear about any
+change, and `--exit-code` to fail a job on regression.
+
 Useful flags: `--pretty` prints the full JSON to stdout, `--timeout` bounds the
 HTTP and TLS probes, and `diff --json` or `diff -o` emit the structured delta.
 
@@ -250,6 +263,8 @@ src/sentineldeck/
 ├── risk/scoring.py     # turns raw check results into scored findings
 ├── remediation.py      # maps each finding to a concrete copy-paste fix
 ├── diff.py             # compares two reports into a structured change delta
+├── monitor.py          # scan, compare to the last run, and persist state
+├── alerts.py           # webhook delivery on regression
 ├── reporters/          # json, html, svg (card + badge), and diff renderers
 └── models.py           # Finding and ScanReport data models
 ```
