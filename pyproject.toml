@@ -15,11 +15,23 @@ classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
   "Intended Audience :: Information Technology",
+  "Intended Audience :: System Administrators",
   "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Topic :: Security",
+  "Typing :: Typed",
 ]
 dependencies = ["dnspython>=2.0", "cryptography>=41.0"]
+
+[project.urls]
+Homepage = "https://github.com/sanmaxdev/SentinelDeck"
+Repository = "https://github.com/sanmaxdev/SentinelDeck"
+Issues = "https://github.com/sanmaxdev/SentinelDeck/issues"
+Changelog = "https://github.com/sanmaxdev/SentinelDeck/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "ruff>=0.4"]

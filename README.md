@@ -33,6 +33,8 @@
   <tr>
     <td><b>Package</b></td>
     <td>
+      <a href="https://pypi.org/project/sentineldeck/"><img alt="pypi" src="https://img.shields.io/pypi/v/sentineldeck?style=flat-square&labelColor=0a0a0f&color=dc2626&label=pypi"></a>
+      <img alt="downloads" src="https://img.shields.io/pypi/dm/sentineldeck?style=flat-square&labelColor=0a0a0f&color=dc2626&label=downloads">
       <img alt="status" src="https://img.shields.io/badge/status-alpha-dc2626?style=flat-square&labelColor=0a0a0f">
       <img alt="python" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-dc2626?style=flat-square&labelColor=0a0a0f">
       <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-dc2626?style=flat-square&labelColor=0a0a0f"></a>
@@ -160,8 +162,16 @@ Every issue is scored by severity into a 0 to 100 risk score and an A to F grade
 
 ## Installation
 
-SentinelDeck requires **Python 3.10 or newer**. A PyPI release
-(`pip install sentineldeck`) is planned; for now, install from source:
+SentinelDeck requires **Python 3.10 or newer**.
+
+From PyPI (available once the first release is published, see
+[RELEASING.md](RELEASING.md)):
+
+```bash
+pip install sentineldeck
+```
+
+From source:
 
 ```bash
 git clone https://github.com/sanmaxdev/SentinelDeck.git
@@ -171,7 +181,7 @@ python3 -m venv .venv
 pip install -e .
 ```
 
-This puts the `sentineldeck` command on your path. To verify:
+Either way, this puts the `sentineldeck` command on your path. To verify:
 
 ```bash
 sentineldeck --version
