@@ -8,6 +8,11 @@ to follow semantic versioning once it reaches 1.0.
 
 ### Added
 
+- Subdomain-takeover detection. After discovering subdomains, the scan resolves
+  each CNAME and flags any that point to an unclaimed third-party service (GitHub
+  Pages, Heroku, S3, Azure, Fastly, Shopify, and more) as a high-severity
+  finding, confirmed by the provider's own "no such resource" page so false
+  positives stay near zero. Passive and offline-testable.
 - Subdomain discovery via certificate transparency. The scan now maps a domain's
   public attack surface by reading CT logs (crt.sh, with a CertSpotter fallback
   because crt.sh is frequently down), lists the hostnames in the JSON and a new

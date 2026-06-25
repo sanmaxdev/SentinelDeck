@@ -156,6 +156,34 @@ def build_findings(checks: dict) -> list[Finding]:
     if subdomains:
         findings.extend(_subdomain_findings(subdomains))
 
+    takeover = checks.get("takeover", {})
+    if takeover:
+        findings.extend(_takeover_findings(takeover))
+
+    return findings
+
+
+def _takeover_findings(takeover: dict) -> list[Finding]:
+    findings: list[Finding] = []
+    for candidate in takeover.get("candidates", []):
+        host = candidate.get("subdomain", "")
+        service = candidate.get("service", "a third-party service")
+        cname = candidate.get("cname", "")
+        findings.append(Finding(
+            id=f"subdomain-takeover:{host}",
+            title=f"Possible subdomain takeover: {host}",
+            severity="high",
+            description=(
+                f"{host} points via CNAME to {service} ({cname}), but the target serves an "
+                "unclaimed-resource page. An attacker could register that resource and serve "
+                "content from this subdomain."
+            ),
+            recommendation=(
+                "Remove the dangling DNS record, or reclaim the resource on the provider so it "
+                "can no longer be taken over."
+            ),
+            evidence=candidate,
+        ))
     return findings
 
 

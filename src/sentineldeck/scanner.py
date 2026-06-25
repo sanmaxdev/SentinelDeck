@@ -18,6 +18,7 @@ from sentineldeck.scanners.http_headers import (
     missing_security_headers,
 )
 from sentineldeck.scanners.subdomains import discover_subdomains
+from sentineldeck.scanners.takeover import detect_takeovers
 from sentineldeck.scanners.tls import inspect_tls
 
 DEFAULT_TIMEOUT = 10
@@ -48,6 +49,16 @@ def scan_domain(target: str, timeout: int = DEFAULT_TIMEOUT) -> ScanReport:
         }
         results = {name: future.result() for name, future in futures.items()}
 
+    # Takeover detection needs the discovered hostnames, so it runs after the
+    # concurrent block, reusing the same DoH-aware resolver.
+    subdomains = results["subdomains"]
+    hosts = subdomains.get("subdomains", []) if subdomains.get("status") == "ok" else []
+    takeover = (
+        detect_takeovers(hosts, resolver=resolver, timeout=timeout)
+        if hosts
+        else {"status": "skipped", "candidates": [], "checked": 0}
+    )
+
     http = {**results["http"], **results["redirect"], "security_txt": results["security_txt"]}
     headers = http.get("headers", {})
     cookies = http.get("cookies", [])
@@ -62,6 +73,7 @@ def scan_domain(target: str, timeout: int = DEFAULT_TIMEOUT) -> ScanReport:
         "dns_hygiene": results["dns_hygiene"],
         "domain_intel": results["domain_intel"],
         "subdomains": results["subdomains"],
+        "takeover": takeover,
     }
     report.findings = build_findings(report.checks)
     attach_remediations(report.findings, domain)

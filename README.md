@@ -121,8 +121,8 @@ own footprint.
     <td width="50%" valign="top">
       <h3>Attack-surface mapping</h3>
       Reads certificate transparency logs to discover the domain's public
-      subdomains, lists them in the report, and flags potentially sensitive names
-      such as dev, staging, admin, or vpn.
+      subdomains, flags potentially sensitive names (dev, staging, admin, vpn),
+      and detects dangling CNAMEs an attacker could take over.
     </td>
     <td width="50%" valign="top">
       <h3>Change tracking and monitoring</h3>
@@ -156,7 +156,7 @@ own footprint.
 | **TLS** | Trust and failure reason (expired, self-signed, hostname mismatch, untrusted), expiry, protocol version, key strength, signature algorithm, hostname match |
 | **Email** | MX, SPF (policy, multiple records, 10-lookup limit), DMARC (policy, subdomain policy, enforcement coverage), DKIM detection |
 | **Domain** | Registrar, registration age, and expiry via RDAP |
-| **Subdomains** | Public subdomain discovery via certificate transparency (crt.sh, CertSpotter), with sensitive-name flagging |
+| **Subdomains** | Public subdomain discovery via certificate transparency (crt.sh, CertSpotter), sensitive-name flagging, and dangling-CNAME takeover detection |
 
 Every issue is scored by severity into a 0 to 100 risk score and an A to F grade.
 
@@ -246,7 +246,7 @@ HTTP and TLS probes, and `diff --json` or `diff -o` emit the structured delta.
 src/sentineldeck/
 ├── scanner.py          # runs every probe concurrently and assembles the report
 ├── scanners/           # one module per surface: dns, dns_hygiene, tls, http_headers,
-│                       #   email_security, domain_intel, subdomains (CT logs)
+│                       #   email_security, domain_intel, subdomains, takeover
 ├── risk/scoring.py     # turns raw check results into scored findings
 ├── remediation.py      # maps each finding to a concrete copy-paste fix
 ├── diff.py             # compares two reports into a structured change delta

@@ -181,6 +181,21 @@ def _security_txt(finding: Finding, target: str) -> Fix:
     )
 
 
+def _takeover(finding: Finding, target: str) -> Fix:
+    evidence = finding.evidence or {}
+    host = evidence.get("subdomain", "the-subdomain." + target)
+    cname = evidence.get("cname", "the-dangling-target")
+    service = evidence.get("service", "the service")
+    return _fix(
+        "Remove the dangling record or reclaim the resource",
+        f"# Option 1 - delete the dangling CNAME:\n"
+        f"{host}.    IN  CNAME  {cname}.    # <-- remove this record\n\n"
+        f"# Option 2 - re-create the {service} resource so the name is no longer claimable.",
+        "dns",
+        "https://owasp.org/www-community/attacks/Subdomain_takeover",
+    )
+
+
 def _dnssec(finding: Finding, target: str) -> Fix:
     return _fix(
         "Enable DNSSEC at your DNS provider and registrar",
@@ -219,6 +234,8 @@ def remediation_for(finding: Finding, target: str) -> Fix | None:
         return builder(finding, target)
     if finding.id.startswith("missing-"):
         return _generic_header(finding, target)
+    if finding.id.startswith("subdomain-takeover"):
+        return _takeover(finding, target)
     return None
 
 
