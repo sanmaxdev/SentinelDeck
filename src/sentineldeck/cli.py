@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 
 from sentineldeck import __version__, tui
 from sentineldeck.alerts import send_alert, should_alert
 from sentineldeck.diff import ReportDelta, diff_reports
+from sentineldeck.models import Finding
 from sentineldeck.monitor import DEFAULT_STATE_DIR, monitor_domain
+from sentineldeck.remediation import remediation_for
 from sentineldeck.reporters.badge import write_badge_svg, write_card_svg
 from sentineldeck.reporters.diff_report import write_diff_report
 from sentineldeck.reporters.html_report import read_json_report, write_html_report
@@ -27,6 +30,9 @@ def build_parser() -> argparse.ArgumentParser:
     scan = subparsers.add_parser("scan", help="Run a safe passive scan against a domain.")
     scan.add_argument("target", help="Domain to scan, e.g. example.com")
     scan.add_argument("-o", "--output", help="Write JSON report to this path.")
+    scan.add_argument("--html", help="Render a client-ready HTML report to this path.")
+    scan.add_argument("--svg", help="Write a shareable SVG score card to this path.")
+    scan.add_argument("--badge", help="Write an embeddable SVG grade badge to this path.")
     scan.add_argument("--pretty", action="store_true", help="Print the full JSON report to stdout.")
     scan.add_argument(
         "--timeout",
@@ -87,6 +93,18 @@ def build_parser() -> argparse.ArgumentParser:
     monitor.add_argument(
         "--exit-code", action="store_true", help="Return exit code 1 if the posture regressed."
     )
+
+    subparsers.add_parser("checks", help="List every check SentinelDeck performs.")
+
+    explain = subparsers.add_parser(
+        "explain", help="Show the description and copy-paste fix for a finding id."
+    )
+    explain.add_argument("finding_id", help="A finding id, e.g. dmarc-missing")
+    explain.add_argument(
+        "--domain", default="example.com", help="Tailor the fix to this domain (default: example.com)."
+    )
+
+    subparsers.add_parser("version", help="Print the installed SentinelDeck version.")
     return parser
 
 
@@ -147,19 +165,37 @@ def main(argv: list[str] | None = None) -> int:
             except OSError as exc:
                 print(f"error: cannot read suppressions file: {exc}", file=sys.stderr)
                 return 2
+        tracker = tui.ScanProgress(args.target) if sys.stderr.isatty() else None
         try:
-            report = scan_domain(args.target, timeout=args.timeout, suppressions=suppressions)
+            report = scan_domain(
+                args.target,
+                timeout=args.timeout,
+                suppressions=suppressions,
+                progress=tracker.step if tracker else None,
+            )
         except ValueError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
+        if tracker:
+            tracker.finish()
 
+        saved: list[tuple[str, str]] = []
         if args.output:
-            print(f"Report written: {write_json_report(report, args.output)}")
+            saved.append(("Report", write_json_report(report, args.output)))
+        if args.html:
+            saved.append(("HTML report", write_html_report(report, args.html)))
+        if args.svg:
+            saved.append(("Share card", write_card_svg(report, args.svg)))
+        if args.badge:
+            saved.append(("Badge", write_badge_svg(report, args.badge)))
+        for label, path in saved:
+            print(f"{label} written: {os.path.abspath(path)}")
+
         if args.pretty:
             print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
         elif sys.stdout.isatty():
             print(tui.render_scan_summary(report))
-        elif not args.output:
+        elif not saved:
             # Piped or redirected with no file target: emit JSON so pipelines work.
             print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
         print(f"SentinelDeck score: {report.risk_score}/100 grade={report.grade} findings={len(report.findings)}")
@@ -217,6 +253,30 @@ def main(argv: list[str] | None = None) -> int:
             sent = send_alert(args.webhook, delta)
             print(f"Webhook alert: {'sent' if sent else 'failed to send'}")
         return 1 if (args.exit_code and delta.regressed) else 0
+
+    if args.command == "checks":
+        print(tui.checks_screen())
+        return 0
+
+    if args.command == "explain":
+        finding = Finding(
+            id=args.finding_id, title=args.finding_id, severity="info",
+            description="", recommendation="",
+        )
+        fix = remediation_for(finding, args.domain)
+        if fix is None:
+            print(
+                f"error: no copy-paste fix is registered for '{args.finding_id}'.",
+                file=sys.stderr,
+            )
+            print("Run 'sentineldeck checks' to see what SentinelDeck detects.", file=sys.stderr)
+            return 1
+        print(tui.render_fix(args.finding_id, fix))
+        return 0
+
+    if args.command == "version":
+        print(f"SentinelDeck {__version__}")
+        return 0
 
     parser.print_help()
     return 1

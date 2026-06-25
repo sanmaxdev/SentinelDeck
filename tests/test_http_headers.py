@@ -37,13 +37,57 @@ def test_evaluate_headers_flags_invalid_nosniff_and_frame_options():
 
 def test_evaluate_headers_accepts_strong_configuration():
     headers = {
-        "strict-transport-security": "max-age=63072000; includeSubDomains",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
         "content-security-policy": "default-src 'self'",
         "x-content-type-options": "nosniff",
         "x-frame-options": "DENY",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "cross-origin-opener-policy": "same-origin",
     }
 
     assert evaluate_headers(headers) == []
+
+
+def test_evaluate_headers_flags_cors_credentials_wildcard():
+    issues = {i["id"]: i for i in evaluate_headers({
+        "access-control-allow-origin": "*",
+        "access-control-allow-credentials": "true",
+        "cross-origin-opener-policy": "same-origin",
+    })}
+
+    assert issues["cors-credentials-wildcard"]["severity"] == "high"
+
+
+def test_evaluate_headers_flags_open_cors_and_unsafe_referrer():
+    ids = {i["id"] for i in evaluate_headers({
+        "access-control-allow-origin": "*",
+        "referrer-policy": "unsafe-url",
+    })}
+
+    assert "cors-open" in ids
+    assert "referrer-policy-unsafe" in ids
+
+
+def test_evaluate_headers_flags_hsts_not_preloadable_but_accepts_preload():
+    weak = {i["id"] for i in evaluate_headers({"strict-transport-security": "max-age=63072000"})}
+    assert "hsts-not-preloadable" in weak
+
+    strong = {i["id"] for i in evaluate_headers(
+        {"strict-transport-security": "max-age=63072000; includeSubDomains; preload"}
+    )}
+    assert "hsts-not-preloadable" not in strong
+
+
+def test_evaluate_headers_flags_cookie_without_samesite():
+    ids = {i["id"] for i in evaluate_headers({}, cookies=["sid=x; Secure; HttpOnly"])}
+
+    assert "cookie-no-samesite" in ids
+
+
+def test_evaluate_headers_flags_missing_coop_only_when_reachable():
+    assert "no-coop" in {i["id"] for i in evaluate_headers({"server": "nginx"})}
+    # an unreachable site (no headers) must not produce a COOP finding
+    assert "no-coop" not in {i["id"] for i in evaluate_headers({})}
 
 
 def test_evaluate_headers_flags_insecure_cookies():

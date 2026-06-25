@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from sentineldeck.models import ScanReport
 from sentineldeck.remediation import attach_remediations
@@ -24,12 +25,35 @@ from sentineldeck.suppressions import apply_suppressions
 
 DEFAULT_TIMEOUT = 10
 
+# Human-readable labels for live scan progress, keyed by the internal probe name.
+STAGE_LABELS = {
+    "dns": "DNS resolution",
+    "http": "HTTP security headers",
+    "redirect": "HTTP to HTTPS redirect",
+    "security_txt": "security.txt",
+    "tls": "TLS certificate",
+    "email": "Email authentication (SPF, DKIM, DMARC, MTA-STS)",
+    "dns_hygiene": "DNS hygiene (CAA, DNSSEC, NS, IPv6, DANE)",
+    "domain_intel": "Domain registration (RDAP)",
+    "subdomains": "Certificate-transparency subdomains",
+}
+
 
 def scan_domain(
-    target: str, timeout: int = DEFAULT_TIMEOUT, suppressions: list[str] | None = None
+    target: str,
+    timeout: int = DEFAULT_TIMEOUT,
+    suppressions: list[str] | None = None,
+    progress: Callable[[str], None] | None = None,
 ) -> ScanReport:
     domain = normalize_domain(target)
     report = ScanReport.empty(domain)
+
+    def _notify(label: str) -> None:
+        if progress is not None:
+            try:
+                progress(label)
+            except Exception:  # noqa: BLE001 - progress is cosmetic, never break a scan
+                pass
 
     # A single resolver is shared by the DNS-backed probes so that, on a network
     # where direct port-53 DNS is blocked, the first failure trips its DoH
@@ -50,17 +74,23 @@ def scan_domain(
             "domain_intel": pool.submit(analyze_domain_intel, domain, timeout),
             "subdomains": pool.submit(discover_subdomains, domain, timeout),
         }
-        results = {name: future.result() for name, future in futures.items()}
+        name_by_future = {future: name for name, future in futures.items()}
+        results: dict = {}
+        # Report each surface as it finishes, so the user sees live progress.
+        for future in as_completed(name_by_future):
+            name = name_by_future[future]
+            results[name] = future.result()
+            _notify(STAGE_LABELS.get(name, name))
 
     # Takeover detection needs the discovered hostnames, so it runs after the
     # concurrent block, reusing the same DoH-aware resolver.
     subdomains = results["subdomains"]
     hosts = subdomains.get("subdomains", []) if subdomains.get("status") == "ok" else []
-    takeover = (
-        detect_takeovers(hosts, resolver=resolver, timeout=timeout)
-        if hosts
-        else {"status": "skipped", "candidates": [], "checked": 0}
-    )
+    if hosts:
+        takeover = detect_takeovers(hosts, resolver=resolver, timeout=timeout)
+        _notify("Subdomain takeover")
+    else:
+        takeover = {"status": "skipped", "candidates": [], "checked": 0}
 
     http = {**results["http"], **results["redirect"], "security_txt": results["security_txt"]}
     headers = http.get("headers", {})

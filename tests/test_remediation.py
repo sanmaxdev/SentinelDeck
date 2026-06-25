@@ -80,6 +80,20 @@ def test_remediation_for_phase1_findings():
         assert needle in fix["snippet"], fid
 
 
+def test_remediation_for_phase2_header_findings():
+    for fid, needle in [
+        ("cors-credentials-wildcard", "Access-Control-Allow-Origin"),
+        ("cors-open", "Access-Control-Allow-Origin"),
+        ("referrer-policy-unsafe", "Referrer-Policy"),
+        ("hsts-not-preloadable", "preload"),
+        ("cookie-no-samesite", "SameSite"),
+        ("no-coop", "Cross-Origin-Opener-Policy"),
+    ]:
+        fix = remediation_for(f(fid, "low"), "example.com")
+        assert fix is not None, fid
+        assert needle in fix["snippet"], fid
+
+
 def test_remediation_unknown_finding_returns_none():
     assert remediation_for(f("domain-newly-registered", severity="low"), "example.com") is None
 

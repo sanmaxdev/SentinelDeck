@@ -110,6 +110,13 @@ def evaluate_headers(headers: dict[str, str], cookies: list[str] | None = None) 
                 f"HSTS max-age is {max_age}s, below the recommended 6 months.",
                 "Raise max-age to at least 15768000 and consider includeSubDomains.", {"value": hsts},
             ))
+        elif "includesubdomains" not in hsts.lower() or "preload" not in hsts.lower():
+            issues.append(_issue(
+                "hsts-not-preloadable", "HSTS is not preload-eligible", "info",
+                "HSTS has a strong max-age but lacks includeSubDomains and/or preload, so the domain "
+                "cannot join the browser HSTS preload list.",
+                "Add includeSubDomains and preload, then submit at hstspreload.org.", {"value": hsts},
+            ))
 
     csp = headers.get("content-security-policy")
     if csp and re.search(r"unsafe-inline|unsafe-eval", csp, re.IGNORECASE):
@@ -142,6 +149,51 @@ def evaluate_headers(headers: dict[str, str], cookies: list[str] | None = None) 
             "One or more Set-Cookie headers omit the Secure and/or HttpOnly attributes.",
             "Add Secure and HttpOnly (and SameSite) to session cookies.",
             {"cookies": [c.split(";")[0].split("=")[0] for c in insecure]},
+        ))
+
+    samesite_missing = [c for c in (cookies or []) if "samesite" not in c.lower()]
+    if samesite_missing:
+        issues.append(_issue(
+            "cookie-no-samesite", "Cookies missing SameSite", "low",
+            "One or more Set-Cookie headers omit the SameSite attribute, weakening CSRF protection.",
+            "Add SameSite=Lax (or Strict) to cookies.",
+            {"cookies": [c.split(";")[0].split("=")[0] for c in samesite_missing]},
+        ))
+
+    # CORS: a wildcard origin combined with credentials is a serious misconfiguration.
+    acao = (headers.get("access-control-allow-origin") or "").strip()
+    acac = (headers.get("access-control-allow-credentials") or "").strip().lower()
+    if acao == "*" and acac == "true":
+        issues.append(_issue(
+            "cors-credentials-wildcard", "CORS allows any origin with credentials", "high",
+            "Access-Control-Allow-Origin is * while credentials are allowed, which usually means the "
+            "server reflects the request Origin and exposes authenticated responses to any site.",
+            "Never combine Access-Control-Allow-Origin: * with credentials; echo only a trusted allowlist.",
+            {"allow_origin": acao},
+        ))
+    elif acao == "*":
+        issues.append(_issue(
+            "cors-open", "CORS is open to any origin", "low",
+            "Access-Control-Allow-Origin is *, so any website can read non-credentialed responses.",
+            "Restrict Access-Control-Allow-Origin to the origins that need cross-origin access.",
+            {"allow_origin": acao},
+        ))
+
+    referrer = (headers.get("referrer-policy") or "").strip().lower()
+    if referrer in ("unsafe-url", "no-referrer-when-downgrade"):
+        issues.append(_issue(
+            "referrer-policy-unsafe", "Referrer-Policy leaks full URLs", "low",
+            f"Referrer-Policy is '{referrer}', which sends full URLs (including paths) to other origins.",
+            "Use a tighter policy such as strict-origin-when-cross-origin or no-referrer.",
+            {"value": referrer},
+        ))
+
+    if headers and "cross-origin-opener-policy" not in headers:
+        issues.append(_issue(
+            "no-coop", "No Cross-Origin-Opener-Policy", "info",
+            "Cross-Origin-Opener-Policy is not set, so the page shares a browsing-context group with "
+            "cross-origin openers (a building block for cross-origin isolation).",
+            "Set Cross-Origin-Opener-Policy: same-origin where compatible.", {},
         ))
 
     if "x-powered-by" in headers:

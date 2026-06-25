@@ -275,6 +275,61 @@ def _dnssec(finding: Finding, target: str) -> Fix:
     )
 
 
+def _cors_wildcard(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Replace the wildcard CORS origin with a trusted allowlist",
+        "# Never pair a wildcard origin with credentials. Echo only trusted origins:\n"
+        f"Access-Control-Allow-Origin: https://app.{target}\n"
+        "Access-Control-Allow-Credentials: true   # only for the allowlisted origin",
+        "http",
+        "https://developer.mozilla.org/docs/Web/HTTP/CORS",
+    )
+
+
+def _cors_open(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Restrict the CORS origin",
+        f"Access-Control-Allow-Origin: https://app.{target}    # not *",
+        "http",
+    )
+
+
+def _referrer_unsafe(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Tighten the Referrer-Policy",
+        "Referrer-Policy: strict-origin-when-cross-origin",
+        "http",
+        "https://developer.mozilla.org/docs/Web/HTTP/Headers/Referrer-Policy",
+    )
+
+
+def _hsts_preload(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Make HSTS preload-eligible",
+        "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\n"
+        "# then submit the domain at https://hstspreload.org",
+        "http",
+        "RFC 6797",
+    )
+
+
+def _cookie_samesite(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Add SameSite to cookies",
+        "Set-Cookie: session=...; Secure; HttpOnly; SameSite=Lax",
+        "http",
+    )
+
+
+def _coop(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Set a Cross-Origin-Opener-Policy",
+        "Cross-Origin-Opener-Policy: same-origin",
+        "http",
+        "https://developer.mozilla.org/docs/Web/HTTP/Headers/Cross-Origin-Opener-Policy",
+    )
+
+
 # --- Dispatch ---------------------------------------------------------------
 
 _BUILDERS: dict[str, Builder] = {
@@ -295,6 +350,12 @@ _BUILDERS: dict[str, Builder] = {
     "tls-rpt-missing": _tls_rpt,
     "bimi-missing": _bimi,
     "dkim-weak-key": _dkim_weak,
+    "cors-credentials-wildcard": _cors_wildcard,
+    "cors-open": _cors_open,
+    "referrer-policy-unsafe": _referrer_unsafe,
+    "hsts-not-preloadable": _hsts_preload,
+    "cookie-no-samesite": _cookie_samesite,
+    "no-coop": _coop,
     "caa-missing": _caa_missing,
     "single-nameserver": _single_ns,
     "no-ipv6": _no_ipv6,

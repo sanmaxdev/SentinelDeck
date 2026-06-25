@@ -164,7 +164,7 @@ own footprint.
 | Area | Checks |
 | --- | --- |
 | **DNS** | Resolution, CAA issuance control, DNSSEC, nameserver redundancy, IPv6 (AAAA) readiness, DANE/TLSA |
-| **HTTP** | HTTPS reachability, HTTP to HTTPS redirect, security-header presence **and** value quality, security.txt, cookie flags, version disclosure |
+| **HTTP** | HTTPS reachability, HTTP to HTTPS redirect, security headers + value quality, CORS policy, cookie flags + SameSite, Cross-Origin-Opener-Policy, security.txt, version disclosure |
 | **TLS** | Trust and failure reason (expired, self-signed, hostname mismatch, untrusted), expiry, protocol version, key strength, signature algorithm, hostname match |
 | **Email** | MX, SPF (policy, multiple records, 10-lookup limit), DMARC (policy, subdomain policy, enforcement coverage), DKIM (presence + key strength), MTA-STS (record + policy validation), TLS-RPT, BIMI |
 | **Domain** | Registrar, registration age, and expiry via RDAP |
@@ -213,6 +213,22 @@ Scan a domain and write a JSON report:
 
 ```bash
 sentineldeck scan example.com --output reports/example.json
+```
+
+An interactive scan streams each surface as it is checked, and the absolute path
+of every file it writes is printed when the scan finishes. You can render the
+client-ready HTML report in the same step:
+
+```bash
+sentineldeck scan example.com --html reports/example.html
+```
+
+List every check, or get the copy-paste fix for a single finding, without
+running a scan:
+
+```bash
+sentineldeck checks
+sentineldeck explain dmarc-missing
 ```
 
 Accept findings you have already reviewed so they stop affecting the score, by

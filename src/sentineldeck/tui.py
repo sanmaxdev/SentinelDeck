@@ -55,10 +55,11 @@ def _enable_windows_vt() -> None:
         import ctypes
 
         kernel32 = ctypes.windll.kernel32
-        handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
-        mode = ctypes.c_uint32()
-        if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
-            kernel32.SetConsoleMode(handle, mode.value | 0x0004)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+        for handle_id in (-11, -12):  # STD_OUTPUT_HANDLE, STD_ERROR_HANDLE
+            handle = kernel32.GetStdHandle(handle_id)
+            mode = ctypes.c_uint32()
+            if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+                kernel32.SetConsoleMode(handle, mode.value | 0x0004)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
     except Exception:  # noqa: BLE001 - colour is a nicety, never fatal
         pass
 
@@ -98,12 +99,39 @@ def _heading(text: str) -> str:
     return fg(text, BRIGHT, bold=True)
 
 
+# A compact 5-row block font for the letters in SENTINELDECK.
+_BANNER_FONT = {
+    "S": ("█████", "█    ", "█████", "    █", "█████"),
+    "E": ("█████", "█    ", "████ ", "█    ", "█████"),
+    "N": ("█   █", "██  █", "█ █ █", "█  ██", "█   █"),
+    "T": ("█████", "  █  ", "  █  ", "  █  ", "  █  "),
+    "I": ("█████", "  █  ", "  █  ", "  █  ", "█████"),
+    "L": ("█    ", "█    ", "█    ", "█    ", "█████"),
+    "D": ("████ ", "█   █", "█   █", "█   █", "████ "),
+    "C": ("█████", "█    ", "█    ", "█    ", "█████"),
+    "K": ("█   █", "█  █ ", "███  ", "█  █ ", "█   █"),
+    " ": ("     ", "     ", "     ", "     ", "     "),
+}
+
+
+def ascii_banner(text: str = "SENTINELDECK", *, indent: str = "  ") -> str:
+    """Render ``text`` as a red ASCII-art banner using the block font."""
+    rows = ["", "", "", "", ""]
+    for char in text.upper():
+        glyph = _BANNER_FONT.get(char, _BANNER_FONT[" "])
+        for i in range(5):
+            rows[i] += glyph[i] + " "
+    return "\n".join(indent + fg(row.rstrip(), RED, bold=True) for row in rows)
+
+
 def _logo() -> list[str]:
-    # A bold red brand bar beside the wordmark.
-    bar = fg("██", BRIGHT)
     name = fg("SentinelDeck", WHITE, bold=True) + "  " + fg(f"v{__version__}", DIM)
     tag = fg("Passive attack-surface radar", MUTED)
-    return ["  " + bar + "  " + name, "  " + bar + "  " + tag]
+    return [
+        ascii_banner(),
+        "",
+        "  " + name + fg("   ·   ", DIM) + tag,
+    ]
 
 
 def home_screen() -> str:
@@ -112,13 +140,16 @@ def home_screen() -> str:
         ("report", "Render a saved report as HTML, a score card, or a badge"),
         ("diff", "Compare two scans and show what changed"),
         ("monitor", "Scan on a schedule and alert on regressions"),
+        ("checks", "List every check SentinelDeck performs"),
+        ("explain", "Show the copy-paste fix for a finding id"),
+        ("version", "Print the installed version"),
     ]
     examples = [
         "sentineldeck scan example.com",
-        "sentineldeck scan example.com -o report.json",
-        "sentineldeck report report.json --html report.html",
+        "sentineldeck scan example.com --html report.html",
+        "sentineldeck explain dmarc-missing",
     ]
-    out: list[str] = ["", *_logo(), "", _rule(), ""]
+    out: list[str] = ["", *_logo(), "", _rule(72), ""]
 
     out.append("  " + _heading("COMMANDS"))
     for name, desc in cmds:
@@ -135,7 +166,7 @@ def home_screen() -> str:
     out.append("    " + fg("use the interactive remediation simulator with a client.", MUTED))
     out.append("")
 
-    out.append(_rule())
+    out.append(_rule(72))
     out.append(
         "  " + fg("docs ", DIM) + fg(_LINK, SOFT)
         + fg("   ·   ", DIM) + fg("pip install -U sentineldeck", MUTED)
@@ -197,8 +228,107 @@ def render_scan_summary(report) -> str:
 
     out.append(
         "  " + fg("Next  ", DIM)
-        + fg("sentineldeck report <file> --html out.html", SOFT)
-        + fg("  for fixes + the simulator", MUTED)
+        + fg("add --html report.html", SOFT)
+        + fg("  to save the report with copy-paste fixes + the simulator", MUTED)
     )
+    out.append("")
+    return "\n".join(out)
+
+
+def _stream_color(stream) -> bool:
+    return (
+        os.environ.get("NO_COLOR") is None
+        and os.environ.get("TERM") != "dumb"
+        and bool(getattr(stream, "isatty", lambda: False)())
+    )
+
+
+class ScanProgress:
+    """Stream live, per-surface scan progress to a stream (stderr by default),
+    so stdout stays clean for the report or JSON."""
+
+    def __init__(self, target: str, stream=None) -> None:
+        self.stream = stream if stream is not None else sys.stderr
+        self.color = _stream_color(self.stream)
+        if self.color:
+            _enable_windows_vt()
+        self._emit(
+            "\n  " + self._paint("Scanning ", MUTED)
+            + self._paint(target, WHITE, bold=True) + self._paint(" …", MUTED) + "\n"
+        )
+
+    def _paint(self, text: str, rgb: tuple[int, int, int], *, bold: bool = False) -> str:
+        if not self.color:
+            return text
+        codes = ["1"] if bold else []
+        r, g, b = rgb
+        codes.append(f"38;2;{r};{g};{b}")
+        return f"\033[{';'.join(codes)}m{text}{RESET}"
+
+    def step(self, label: str) -> None:
+        self._emit(
+            "    " + self._paint("✓", (34, 197, 94), bold=True)
+            + " " + self._paint(label, MUTED) + "\n"
+        )
+
+    def finish(self) -> None:
+        self._emit("\n")
+
+    def _emit(self, text: str) -> None:
+        try:
+            self.stream.write(text)
+            self.stream.flush()
+        except Exception:  # noqa: BLE001 - progress is cosmetic, never fatal
+            pass
+
+
+_CHECK_SURFACES = [
+    ("DNS", ["Resolution", "CAA issuance control", "DNSSEC", "Nameserver redundancy",
+             "IPv6 (AAAA) readiness", "DANE / TLSA"]),
+    ("Email", ["MX", "SPF policy, lookups, multiples", "DMARC policy + coverage",
+               "DKIM presence + key strength", "MTA-STS record + policy", "TLS-RPT", "BIMI"]),
+    ("HTTP", ["HTTPS reachability", "HTTP to HTTPS redirect", "Security headers + value quality",
+              "CORS policy", "Clickjacking / framing", "Cookie flags + SameSite", "security.txt"]),
+    ("TLS", ["Trust + failure reason", "Expiry", "Protocol version", "Key strength",
+             "Hostname match"]),
+    ("Attack surface", ["Certificate-transparency subdomains", "Sensitive subdomain labels",
+                        "Subdomain takeover"]),
+    ("Domain", ["RDAP registration", "Newly-registered domain age"]),
+]
+
+
+def checks_screen() -> str:
+    out: list[str] = [
+        "", "  " + fg("SentinelDeck checks", WHITE, bold=True)
+        + fg("   every scan, all passive", DIM), "", _rule(72), "",
+    ]
+    for surface, items in _CHECK_SURFACES:
+        out.append("  " + _heading(surface.upper()))
+        for item in items:
+            out.append("    " + fg("•", RED) + " " + fg(item, MUTED))
+        out.append("")
+    out.append(_rule(72))
+    out.append("  " + fg("explain any finding:  ", DIM)
+               + fg("sentineldeck explain <finding-id>", SOFT))
+    out.append("")
+    return "\n".join(out)
+
+
+def render_fix(finding_id: str, fix: dict) -> str:
+    """Render a single remediation fix (used by the ``explain`` command)."""
+    kind = fix.get("kind", "")
+    out: list[str] = [
+        "", "  " + fg(finding_id, BRIGHT, bold=True)
+        + (fg(f"   [{kind}]", DIM) if kind else ""), "",
+    ]
+    if fix.get("title"):
+        out.append("  " + fg(fix["title"], WHITE))
+        out.append("")
+    for line in fix.get("snippet", "").splitlines():
+        out.append("    " + fg(line, MUTED))
+    references = fix.get("references") or []
+    if references:
+        out.append("")
+        out.append("  " + fg("ref  ", DIM) + fg(", ".join(references), SOFT))
     out.append("")
     return "\n".join(out)

@@ -57,3 +57,45 @@ def test_render_scan_summary_celebrates_a_clean_posture(monkeypatch):
     monkeypatch.setattr(tui, "_color_cache", False)
 
     assert "Clean posture" in tui.render_scan_summary(report("A", 0, []))
+
+
+def test_ascii_banner_renders_five_rows_of_blocks(monkeypatch):
+    monkeypatch.setattr(tui, "_color_cache", False)
+
+    banner = tui.ascii_banner()
+
+    assert "█" in banner
+    assert banner.count("\n") == 4  # five rows
+
+
+def test_checks_screen_lists_every_surface(monkeypatch):
+    monkeypatch.setattr(tui, "_color_cache", False)
+
+    out = tui.checks_screen()
+
+    for surface in ("DNS", "EMAIL", "HTTP", "TLS", "DOMAIN"):
+        assert surface in out
+
+
+def test_render_fix_shows_snippet_and_reference(monkeypatch):
+    monkeypatch.setattr(tui, "_color_cache", False)
+    fix = {"title": "Do X", "snippet": "Header: value", "kind": "http", "references": ["RFC 1"]}
+
+    out = tui.render_fix("some-id", fix)
+
+    assert "some-id" in out and "Header: value" in out and "RFC 1" in out
+
+
+def test_scan_progress_streams_steps_to_a_plain_stream():
+    import io
+
+    buf = io.StringIO()
+    progress = tui.ScanProgress("example.com", stream=buf)
+    progress.step("DNS resolution")
+    progress.step("TLS certificate")
+    progress.finish()
+
+    out = buf.getvalue()
+    assert "Scanning" in out and "example.com" in out
+    assert "DNS resolution" in out and "TLS certificate" in out
+    assert "\033[" not in out  # a StringIO is not a tty, so no colour

@@ -29,3 +29,31 @@ def test_scan_domain_includes_email_security(monkeypatch):
     report = scan_domain("example.com")
 
     assert report.checks["email_security"]["dmarc"]["policy"] == "reject"
+
+
+def test_scan_domain_reports_progress(monkeypatch):
+    monkeypatch.setattr("sentineldeck.scanner.resolve_domain", lambda domain: {"status": "ok"})
+    monkeypatch.setattr(
+        "sentineldeck.scanner.fetch_headers",
+        lambda domain, timeout=10: {"reachable": True, "headers": {}, "cookies": []},
+    )
+    monkeypatch.setattr("sentineldeck.scanner.check_http_redirect", lambda domain, timeout=10: {})
+    monkeypatch.setattr("sentineldeck.scanner.check_security_txt", lambda domain, timeout=10: {})
+    monkeypatch.setattr("sentineldeck.scanner.inspect_tls", lambda domain, timeout=10: {"valid": True})
+    monkeypatch.setattr(
+        "sentineldeck.scanner.analyze_email_security",
+        lambda domain, resolver=None: {"mx": {"present": False}},
+    )
+    monkeypatch.setattr("sentineldeck.scanner.analyze_dns_hygiene", lambda domain, resolver=None: {})
+    monkeypatch.setattr("sentineldeck.scanner.analyze_domain_intel", lambda domain, timeout=10: {"status": "error"})
+    monkeypatch.setattr(
+        "sentineldeck.scanner.discover_subdomains",
+        lambda domain, timeout=10: {"status": "skipped", "subdomains": []},
+    )
+
+    labels: list[str] = []
+    scan_domain("example.com", progress=labels.append)
+
+    assert "DNS resolution" in labels
+    assert "TLS certificate" in labels
+    assert len(labels) >= 8

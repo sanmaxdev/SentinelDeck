@@ -48,7 +48,7 @@ def test_cli_scan_loads_and_passes_suppressions(tmp_path, monkeypatch):
     sup.write_text("insecure-cookies\nmissing-*\n", encoding="utf-8")
     captured = {}
 
-    def fake_scan(target, timeout=10, suppressions=None):
+    def fake_scan(target, timeout=10, suppressions=None, progress=None):
         captured["suppressions"] = suppressions
         return ScanReport(
             target="example.com", generated_at="t", risk_score=0, grade="A", checks={}, findings=[]

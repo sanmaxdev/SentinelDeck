@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [0.4.0] - 2026-06-25
+
+### Added
+
+- HTTP security-header depth: CORS misconfiguration (a wildcard origin with
+  credentials is flagged high), Referrer-Policy quality, HSTS preload
+  eligibility, cookie SameSite, and Cross-Origin-Opener-Policy. Each ships a
+  copy-paste fix.
+- Live scan progress. An interactive scan streams each surface (DNS, TLS, HTTP,
+  email, certificate transparency) as it finishes, on stderr so piped output
+  stays clean.
+- A red ASCII-art SENTINELDECK banner on the home screen.
+- New commands: `checks` lists every check; `explain <finding-id>` prints the
+  copy-paste fix for a finding; `version` prints the installed version.
+- `scan` now writes HTML, score-card, and badge output directly (`--html`,
+  `--svg`, `--badge`) and prints the absolute path of every file it saves.
+
 ## [0.3.0] - 2026-06-25
 
 ### Added
