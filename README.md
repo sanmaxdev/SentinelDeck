@@ -7,26 +7,69 @@
   One safe scan turns a domain into a clear risk grade, structured JSON, and a client-ready report.
 </p>
 
-<p>
-  <a href="https://github.com/sanmaxdev/SentinelDeck/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/sanmaxdev/SentinelDeck/ci.yml?style=for-the-badge&labelColor=0a0a0f&color=dc2626&label=CI"></a>
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-dc2626?style=for-the-badge&labelColor=0a0a0f">
-  <img alt="License" src="https://img.shields.io/badge/License-MIT-dc2626?style=for-the-badge&labelColor=0a0a0f">
-  <img alt="Scans" src="https://img.shields.io/badge/Scans-Passive%20only-dc2626?style=for-the-badge&labelColor=0a0a0f">
-</p>
-
 </div>
 
----
+<table>
+  <tr>
+    <td><b>Testing</b></td>
+    <td>
+      <a href="https://github.com/sanmaxdev/SentinelDeck/actions/workflows/ci.yml"><img alt="tests" src="https://img.shields.io/github/actions/workflow/status/sanmaxdev/SentinelDeck/ci.yml?style=flat-square&labelColor=0a0a0f&color=dc2626&label=tests"></a>
+    </td>
+  </tr>
+  <tr>
+    <td><b>Code quality</b></td>
+    <td>
+      <a href="https://github.com/sanmaxdev/SentinelDeck/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/sanmaxdev/SentinelDeck/codeql.yml?style=flat-square&labelColor=0a0a0f&color=dc2626&label=CodeQL"></a>
+      <a href="https://github.com/sanmaxdev/SentinelDeck/blob/main/.pre-commit-config.yaml"><img alt="pre-commit" src="https://img.shields.io/badge/pre--commit-enabled-dc2626?style=flat-square&labelColor=0a0a0f&logo=pre-commit&logoColor=white"></a>
+    </td>
+  </tr>
+  <tr>
+    <td><b>Code style</b></td>
+    <td>
+      <a href="https://github.com/astral-sh/ruff"><img alt="ruff" src="https://img.shields.io/badge/code%20style-ruff-dc2626?style=flat-square&labelColor=0a0a0f"></a>
+      <img alt="typed" src="https://img.shields.io/badge/typed-PEP%20561-dc2626?style=flat-square&labelColor=0a0a0f">
+    </td>
+  </tr>
+  <tr>
+    <td><b>Package</b></td>
+    <td>
+      <img alt="status" src="https://img.shields.io/badge/status-alpha-dc2626?style=flat-square&labelColor=0a0a0f">
+      <img alt="python" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-dc2626?style=flat-square&labelColor=0a0a0f">
+      <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-dc2626?style=flat-square&labelColor=0a0a0f"></a>
+    </td>
+  </tr>
+  <tr>
+    <td><b>Safety</b></td>
+    <td>
+      <img alt="passive" src="https://img.shields.io/badge/scans-passive%20only-dc2626?style=flat-square&labelColor=0a0a0f">
+      <a href="SECURITY.md"><img alt="security policy" src="https://img.shields.io/badge/security-policy-dc2626?style=flat-square&labelColor=0a0a0f"></a>
+    </td>
+  </tr>
+</table>
 
 SentinelDeck inspects the public-facing posture of a domain across DNS, HTTP,
-TLS, and email authentication, using only the kind of normal lookups any browser
-or mail server would make. There is no intrusive scanning, no exploitation, and
-nothing a domain owner would not expect. The result is a risk score, an A to F
-grade, and a set of prioritised findings, each with a concrete copy-paste fix.
+TLS, email authentication, and its certificate-transparency footprint, using
+only the kind of normal lookups any browser or mail server would make. There is
+no intrusive scanning, no exploitation, and nothing a domain owner would not
+expect. The result is a risk score, an A to F grade, and a set of prioritised
+findings, each with a concrete copy-paste fix.
 
 It is built for the people who need that picture fast: an agency qualifying a
 prospect, a consultant producing a client report, or a small team checking its
 own footprint.
+
+## Contents
+
+- [Features](#features)
+- [What it checks](#what-it-checks)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Example output](#example-output)
+- [How it works](#how-it-works)
+- [Development](#development)
+- [Safety model](#safety-model)
+- [Support](#support)
+- [License](#license)
 
 ## Features
 
@@ -60,20 +103,6 @@ own footprint.
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <h3>Change tracking and monitoring</h3>
-      Diff any two scans to see what is new, what was resolved, and how the grade
-      moved. A non-zero exit code on regression drops straight into a cron job or
-      CI step.
-    </td>
-    <td width="50%" valign="top">
-      <h3>Report-ready outputs</h3>
-      Structured JSON for automation, a polished dark and red HTML report for
-      clients, a shareable score card, an embeddable grade badge, and an HTML
-      change report.
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
       <h3>Copy-paste remediation</h3>
       Every finding ships the exact fix, not just advice: the precise DNS record,
       HTTP header, or server config that resolves it, each with an authoritative
@@ -94,10 +123,24 @@ own footprint.
       such as dev, staging, admin, or vpn.
     </td>
     <td width="50%" valign="top">
+      <h3>Change tracking and monitoring</h3>
+      Diff any two scans to see what is new, what was resolved, and how the grade
+      moved. A non-zero exit code on regression drops straight into a cron job or
+      CI step.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>Report-ready outputs</h3>
+      Structured JSON for automation, a polished dark and red HTML report for
+      clients, a shareable score card, an embeddable grade badge, and an HTML
+      change report.
+    </td>
+    <td width="50%" valign="top">
       <h3>Resilient by design</h3>
-      Two certificate-transparency sources (crt.sh with a CertSpotter fallback),
-      a DNS-over-HTTPS fallback for blocked networks, and a confidence model that
-      never lets an inconclusive check inflate a score.
+      Two certificate-transparency sources (crt.sh with a CertSpotter fallback)
+      and a DNS-over-HTTPS fallback for blocked networks, so a scan keeps working
+      where a naive tool would silently fail.
     </td>
   </tr>
 </table>
@@ -111,15 +154,33 @@ own footprint.
 | **TLS** | Trust and failure reason (expired, self-signed, hostname mismatch, untrusted), expiry, protocol version, key strength, signature algorithm, hostname match |
 | **Email** | MX, SPF (policy, multiple records, 10-lookup limit), DMARC (policy, subdomain policy, enforcement coverage), DKIM detection |
 | **Domain** | Registrar, registration age, and expiry via RDAP |
+| **Subdomains** | Public subdomain discovery via certificate transparency (crt.sh, CertSpotter), with sensitive-name flagging |
 
 Every issue is scored by severity into a 0 to 100 risk score and an A to F grade.
 
-## Install
+## Installation
+
+SentinelDeck requires **Python 3.10 or newer**. A PyPI release
+(`pip install sentineldeck`) is planned; for now, install from source:
 
 ```bash
+git clone https://github.com/sanmaxdev/SentinelDeck.git
+cd SentinelDeck
 python3 -m venv .venv
-. .venv/bin/activate
+. .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -e .
+```
+
+This puts the `sentineldeck` command on your path. To verify:
+
+```bash
+sentineldeck --version
+```
+
+For development, install the dev extras (pytest and ruff):
+
+```bash
+pip install -e ".[dev]"
 ```
 
 ## Usage
@@ -130,7 +191,9 @@ Scan a domain and write a JSON report:
 sentineldeck scan example.com --output reports/example.json
 ```
 
-Render a client-ready HTML report, a shareable score card, and a badge:
+Render a client-ready HTML report, a shareable score card, and a badge. The HTML
+report includes the attack-surface map and the interactive remediation
+simulator:
 
 ```bash
 sentineldeck report reports/example.json \
@@ -172,16 +235,17 @@ HTTP and TLS probes, and `diff --json` or `diff -o` emit the structured delta.
 ```
 src/sentineldeck/
 ├── scanner.py          # runs every probe concurrently and assembles the report
-├── scanners/           # one module per surface: dns, dns_hygiene, tls,
-│                       #   http_headers, email_security, domain_intel
+├── scanners/           # one module per surface: dns, dns_hygiene, tls, http_headers,
+│                       #   email_security, domain_intel, subdomains (CT logs)
 ├── risk/scoring.py     # turns raw check results into scored findings
+├── remediation.py      # maps each finding to a concrete copy-paste fix
 ├── diff.py             # compares two reports into a structured change delta
 ├── reporters/          # json, html, svg (card + badge), and diff renderers
 └── models.py           # Finding and ScanReport data models
 ```
 
 Each scanner is independent and keeps its network call injectable, so the whole
-suite is tested offline with mocked DNS and HTTP.
+suite is tested offline with mocked DNS, HTTP, and certificate-transparency data.
 
 ## Development
 
@@ -191,19 +255,31 @@ ruff check .
 pytest -q
 ```
 
-CI runs the linter and test suite on Python 3.10, 3.11, and 3.12.
+Optionally enable the pre-commit hooks so linting runs on every commit:
+
+```bash
+pip install pre-commit && pre-commit install
+```
+
+CI runs ruff and the full test suite on Python 3.10, 3.11, and 3.12, and CodeQL
+scans the codebase for security issues on every push.
 
 ## Safety model
 
 SentinelDeck is **passive-first**. It performs only normal DNS lookups and
-standard HTTP and TLS metadata requests against the supplied domain. Use it only
-on domains you own or are authorised to assess.
+standard HTTP and TLS metadata requests against the supplied domain, plus public
+certificate-transparency queries. It does not probe, fuzz, or exploit anything.
+Use it only on domains you own or are authorised to assess.
 
-## Contributing
+## Support
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). New checks
-must be passive-safe and come with tests. Please also read our
-[Code of Conduct](CODE_OF_CONDUCT.md).
+- **Questions and bug reports**: open an issue on the
+  [issue tracker](https://github.com/sanmaxdev/SentinelDeck/issues).
+- **Security issues**: please follow the [security policy](SECURITY.md) instead
+  of filing a public issue.
+- **Contributing**: see [CONTRIBUTING.md](CONTRIBUTING.md). New checks must be
+  passive-safe and come with tests. This project follows a
+  [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
