@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import threading
 import urllib.parse
 import urllib.request
 from collections.abc import Callable
@@ -80,6 +81,55 @@ def _resolve_direct(name: str, record_type: str, timeout: float) -> tuple[list[s
 def query_records(name: str, record_type: str, timeout: float = 5.0) -> list[str]:
     """Convenience wrapper returning only the records (best effort)."""
     return resolve(name, record_type, timeout)[0]
+
+
+class Resolver:
+    """A per-scan resolver that fails over to DNS-over-HTTPS quickly.
+
+    The plain :func:`resolve` pays the full DNS timeout on *every* lookup before
+    falling back to DoH. On a port-53-blocked network where every query times
+    out, a single scan makes ~17 lookups and waits the timeout each time. This
+    wrapper remembers the first hard failure and then routes subsequent lookups
+    straight to DoH, so a blocked scan pays the direct timeout once instead of
+    once per record. It is safe to share across the threads of one scan.
+
+    Correctness is preserved: DoH returns authoritative answers, the breaker
+    trips only on a hard ``ERROR`` (never on an authoritative reply), and if DoH
+    later fails the lookup retries the direct path.
+    """
+
+    def __init__(
+        self,
+        timeout: float = 5.0,
+        *,
+        doh_fetcher: DohFetcher | None = None,
+        enable_doh: bool = True,
+    ) -> None:
+        self.timeout = timeout
+        self._doh_fetcher = doh_fetcher or _doh_fetch
+        self._enable_doh = enable_doh
+        self._direct_blocked = False
+        self._lock = threading.Lock()
+
+    def __call__(self, name: str, record_type: str) -> tuple[list[str], str]:
+        if self._enable_doh and self._tripped():
+            records, status = _resolve_doh(name, record_type, self.timeout, self._doh_fetcher)
+            if status != ERROR:
+                return records, status
+            # DoH itself failed; fall through and retry the direct path.
+        records, status = _resolve_direct(name, record_type, self.timeout)
+        if status == ERROR and self._enable_doh:
+            self._trip()
+            return _resolve_doh(name, record_type, self.timeout, self._doh_fetcher)
+        return records, status
+
+    def _tripped(self) -> bool:
+        with self._lock:
+            return self._direct_blocked
+
+    def _trip(self) -> None:
+        with self._lock:
+            self._direct_blocked = True
 
 
 def _resolve_dnspython(name: str, record_type: str, timeout: float) -> tuple[list[str], str]:

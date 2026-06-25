@@ -104,3 +104,54 @@ def test_email_security_resolves_via_doh_when_direct_is_blocked(monkeypatch):
     assert out["mx"]["present"] is True
     assert out["spf"]["present"] is True
     assert out["spf"]["policy"] == "-all"
+
+
+def test_resolver_trips_to_doh_after_first_direct_failure(monkeypatch):
+    counts = {"direct": 0, "doh": 0}
+
+    def fake_direct(name, record_type, timeout):
+        counts["direct"] += 1
+        return [], ERROR
+
+    def fake_doh(name, record_type, timeout):
+        counts["doh"] += 1
+        return {"Status": 0, "Answer": [{"type": 15, "data": "5 mail.example.com."}]}
+
+    monkeypatch.setattr(dns_lookup, "_resolve_direct", fake_direct)
+    resolver = dns_lookup.Resolver(doh_fetcher=fake_doh)
+
+    # First lookup tries direct (which fails), trips the breaker, then uses DoH.
+    assert resolver("example.com", "MX") == (["5 mail.example.com."], OK)
+    assert counts == {"direct": 1, "doh": 1}
+
+    # Once tripped, later lookups skip the direct timeout entirely.
+    resolver("example.com", "TXT")
+    assert counts == {"direct": 1, "doh": 2}
+
+
+def test_resolver_stays_direct_when_dns_works(monkeypatch):
+    monkeypatch.setattr(dns_lookup, "_resolve_direct", lambda *a: (["1.2.3.4"], OK))
+
+    def boom(*a):
+        raise AssertionError("DoH must not run while direct DNS works")
+
+    resolver = dns_lookup.Resolver(doh_fetcher=boom)
+
+    assert resolver("example.com", "A") == (["1.2.3.4"], OK)
+    assert resolver("example.com", "A") == (["1.2.3.4"], OK)
+
+
+def test_resolver_retries_direct_when_doh_fails_after_trip(monkeypatch):
+    counts = {"direct": 0}
+
+    def fake_direct(name, record_type, timeout):
+        counts["direct"] += 1
+        return [], ERROR
+
+    monkeypatch.setattr(dns_lookup, "_resolve_direct", fake_direct)
+    resolver = dns_lookup.Resolver(doh_fetcher=lambda *a: None)  # DoH always fails
+
+    assert resolver("example.com", "MX") == ([], ERROR)
+    # Breaker tripped, but since DoH keeps failing it must fall back to direct.
+    assert resolver("example.com", "TXT") == ([], ERROR)
+    assert counts["direct"] == 2

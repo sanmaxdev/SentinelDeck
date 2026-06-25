@@ -18,6 +18,10 @@ to follow semantic versioning once it reaches 1.0.
   SPF, DMARC, CAA, and DNSKEY lookups fall back to DoH over port 443 instead of
   degrading to unverified. The fallback runs only on a hard resolver failure and
   never overrides an authoritative answer.
+- A shared per-scan resolver with a DoH circuit breaker: the first hard port-53
+  failure trips it once, so the remaining email and DNS-hygiene lookups skip the
+  direct timeout and go straight to DoH. On a blocked network a full scan drops
+  from minutes to seconds.
 - Deep TLS inspection using the `cryptography` library: the leaf certificate is
   parsed directly, so subject, SANs, key type and size, signature algorithm,
   self-signed status, and hostname match are reported even when the chain does
