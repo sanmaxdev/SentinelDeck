@@ -55,6 +55,17 @@ def test_remediation_generic_header_fallback():
     assert "nosniff" in fix["snippet"]
 
 
+def test_remediation_for_email_hardening_records():
+    for fid, needle in [
+        ("mta-sts-missing", "_mta-sts.example.com"),
+        ("tls-rpt-missing", "_smtp._tls.example.com"),
+        ("bimi-missing", "default._bimi.example.com"),
+    ]:
+        fix = remediation_for(f(fid, "info"), "example.com")
+        assert fix is not None
+        assert needle in fix["snippet"]
+
+
 def test_remediation_unknown_finding_returns_none():
     assert remediation_for(f("domain-newly-registered", severity="low"), "example.com") is None
 

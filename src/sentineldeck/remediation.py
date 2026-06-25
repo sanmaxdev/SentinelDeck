@@ -170,6 +170,36 @@ def _caa_missing(finding: Finding, target: str) -> Fix:
     )
 
 
+def _mta_sts(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Publish MTA-STS: a DNS record plus a policy file served over HTTPS",
+        f"# 1) DNS TXT record\n_mta-sts.{target}.    IN  TXT  \"v=STSv1; id=20260101000000\"\n\n"
+        f"# 2) https://mta-sts.{target}/.well-known/mta-sts.txt\n"
+        f"version: STSv1\nmode: enforce\nmx: mail.{target}\nmax_age: 604800",
+        "dns",
+        "RFC 8461",
+    )
+
+
+def _tls_rpt(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Publish a TLS-RPT record to receive inbound TLS failure reports",
+        f"_smtp._tls.{target}.    IN  TXT  \"v=TLSRPTv1; rua=mailto:tlsrpt@{target}\"",
+        "dns",
+        "RFC 8460",
+    )
+
+
+def _bimi(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Publish a BIMI record pointing at your logo",
+        f"default._bimi.{target}.    IN  TXT  \"v=BIMI1; l=https://{target}/bimi-logo.svg; a=https://{target}/vmc.pem\"\n"
+        "# The logo must be a square SVG Tiny PS; a VMC (a=) is required by Gmail and others.",
+        "dns",
+        "https://bimigroup.org/",
+    )
+
+
 def _security_txt(finding: Finding, target: str) -> Fix:
     return _fix(
         "Publish /.well-known/security.txt",
@@ -221,6 +251,9 @@ _BUILDERS: dict[str, Builder] = {
     "dmarc-missing": _dmarc_missing,
     "dmarc-monitor-only": _dmarc_monitor,
     "mx-missing": _mx_missing,
+    "mta-sts-missing": _mta_sts,
+    "tls-rpt-missing": _tls_rpt,
+    "bimi-missing": _bimi,
     "caa-missing": _caa_missing,
     "no-security-txt": _security_txt,
     "dnssec-disabled": _dnssec,

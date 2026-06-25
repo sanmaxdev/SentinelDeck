@@ -398,6 +398,47 @@ def _email_findings(email: dict) -> list[Finding]:
             confidence="indeterminate",
         ))
 
+    # Advanced inbound-mail hardening, only relevant when the domain receives mail.
+    mta_sts = email.get("mta_sts", {})
+    tls_rpt = email.get("tls_rpt", {})
+    bimi = email.get("bimi", {})
+
+    if mx.get("present") and mta_sts and not mta_sts.get("present"):
+        findings.append(Finding(
+            id="mta-sts-missing",
+            title="MTA-STS is not configured",
+            severity="info",
+            description="The domain does not publish MTA-STS, so sending servers cannot require TLS for inbound mail.",
+            recommendation="Publish an MTA-STS policy to require TLS for inbound email.",
+            evidence=mta_sts,
+            confidence=_email_confidence(mta_sts),
+        ))
+
+    if mx.get("present") and tls_rpt and not tls_rpt.get("present"):
+        findings.append(Finding(
+            id="tls-rpt-missing",
+            title="No SMTP TLS Reporting (TLS-RPT)",
+            severity="info",
+            description="No TLS-RPT record is published, so you receive no reports about inbound TLS failures.",
+            recommendation="Publish a TLS-RPT record to receive inbound SMTP TLS failure reports.",
+            evidence=tls_rpt,
+            confidence=_email_confidence(tls_rpt),
+        ))
+
+    if bimi and not bimi.get("present") and dmarc.get("policy") in {"quarantine", "reject"}:
+        findings.append(Finding(
+            id="bimi-missing",
+            title="No BIMI record published",
+            severity="info",
+            description=(
+                "DMARC is enforced but no BIMI record is published, so your logo "
+                "will not show in supporting inboxes."
+            ),
+            recommendation="Publish a BIMI record (and a VMC) to display your brand logo in supporting mail clients.",
+            evidence=bimi,
+            confidence=_email_confidence(bimi),
+        ))
+
     return findings
 
 

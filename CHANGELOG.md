@@ -8,6 +8,10 @@ to follow semantic versioning once it reaches 1.0.
 
 ### Added
 
+- Email hardening checks for MTA-STS, TLS-RPT, and BIMI. The scan detects these
+  records and, when relevant (MTA-STS and TLS-RPT for domains that receive mail,
+  BIMI once DMARC is enforced), surfaces an informational finding with a
+  copy-paste DNS fix. They never penalise the score.
 - `monitor` command for scheduled monitoring. It scans a domain, diffs the
   result against the report saved from the previous run, and stores the new
   report as the latest, turning a cron job or scheduled task into a standing

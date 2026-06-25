@@ -53,6 +53,13 @@ def extract_dmarc_policy(record: str | None) -> str | None:
     return value.lower() if value else None
 
 
+def _lookup_versioned(resolver: Resolver, name: str, version_prefix: str) -> dict:
+    """Look up a TXT record and detect the one carrying ``version_prefix``."""
+    records, status = resolver(name, "TXT")
+    matched = [r for r in records if r.lower().replace(" ", "").startswith(version_prefix)]
+    return {"present": bool(matched), "record": matched[0] if matched else None, "status": status}
+
+
 def _probe_dkim(domain: str, resolver: Resolver, selectors: tuple[str, ...]) -> dict:
     found: list[str] = []
     any_error = False
@@ -104,4 +111,7 @@ def analyze_email_security(domain: str, resolver: Resolver = resolve) -> dict:
             "status": dmarc_status,
         },
         "dkim": _probe_dkim(domain, resolver, COMMON_DKIM_SELECTORS),
+        "mta_sts": _lookup_versioned(resolver, f"_mta-sts.{domain}", "v=stsv1"),
+        "tls_rpt": _lookup_versioned(resolver, f"_smtp._tls.{domain}", "v=tlsrptv1"),
+        "bimi": _lookup_versioned(resolver, f"default._bimi.{domain}", "v=bimi1"),
     }

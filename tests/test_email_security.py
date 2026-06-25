@@ -77,6 +77,62 @@ def test_build_findings_flags_missing_dmarc_and_weak_spf():
     assert "spf-weak-policy" in finding_ids
 
 
+def test_analyze_detects_mta_sts_tls_rpt_and_bimi():
+    resolver = make_resolver({
+        ("_mta-sts.example.com", "TXT"): ["v=STSv1; id=20260101"],
+        ("_smtp._tls.example.com", "TXT"): ["v=TLSRPTv1; rua=mailto:t@example.com"],
+        ("default._bimi.example.com", "TXT"): ["v=BIMI1; l=https://example.com/logo.svg"],
+    })
+
+    out = analyze_email_security("example.com", resolver=resolver)
+
+    assert out["mta_sts"]["present"] is True
+    assert out["tls_rpt"]["present"] is True
+    assert out["bimi"]["present"] is True
+
+
+def test_findings_flag_missing_email_hardening_when_mx_present():
+    checks = {"email_security": {
+        "mx": {"present": True, "records": ["10 mail.example.com."]},
+        "spf": {"present": True, "records": ["v=spf1 -all"], "policy": "-all"},
+        "dmarc": {"present": True, "records": ["v=DMARC1; p=reject"], "policy": "reject"},
+        "mta_sts": {"present": False, "status": "ok"},
+        "tls_rpt": {"present": False, "status": "ok"},
+        "bimi": {"present": False, "status": "ok"},
+    }}
+
+    ids = {f.id for f in build_findings(checks)}
+
+    assert {"mta-sts-missing", "tls-rpt-missing", "bimi-missing"} <= ids
+
+
+def test_email_hardening_not_flagged_without_mx():
+    checks = {"email_security": {
+        "mx": {"present": False, "records": []},
+        "dmarc": {"present": False, "policy": None},
+        "mta_sts": {"present": False, "status": "ok"},
+        "tls_rpt": {"present": False, "status": "ok"},
+        "bimi": {"present": False, "status": "ok"},
+    }}
+
+    ids = {f.id for f in build_findings(checks)}
+
+    assert "mta-sts-missing" not in ids
+    assert "tls-rpt-missing" not in ids
+
+
+def test_bimi_not_flagged_without_dmarc_enforcement():
+    checks = {"email_security": {
+        "mx": {"present": True, "records": ["10 m.example.com."]},
+        "dmarc": {"present": True, "policy": "none"},
+        "mta_sts": {"present": True},
+        "tls_rpt": {"present": True},
+        "bimi": {"present": False, "status": "ok"},
+    }}
+
+    assert "bimi-missing" not in {f.id for f in build_findings(checks)}
+
+
 def test_email_findings_are_indeterminate_when_dns_errors():
     email = analyze_email_security("example.com", resolver=make_resolver({}, status="error"))
 
