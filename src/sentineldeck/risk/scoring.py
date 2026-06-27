@@ -164,6 +164,52 @@ def build_findings(checks: dict) -> list[Finding]:
     if takeover:
         findings.extend(_takeover_findings(takeover))
 
+    technologies = checks.get("technologies", {})
+    if technologies:
+        findings.extend(_technology_findings(technologies))
+
+    cloud_assets = checks.get("cloud_assets", {})
+    if cloud_assets:
+        findings.extend(_cloud_findings(cloud_assets))
+
+    return findings
+
+
+def _technology_findings(technologies: dict) -> list[Finding]:
+    findings: list[Finding] = []
+    for vuln in technologies.get("vulnerable_js", []):
+        library = vuln.get("library", "library")
+        version = vuln.get("version", "")
+        severity = vuln.get("severity", "medium")
+        findings.append(Finding(
+            id=f"vulnerable-js-library:{library}",
+            title=f"Vulnerable JavaScript library: {library} {version}".strip(),
+            severity=severity if severity in {"critical", "high", "medium", "low", "info"} else "medium",
+            description=vuln.get("advisory", f"{library} {version} has a known vulnerability."),
+            recommendation=f"Upgrade {library} to the latest patched release.",
+            evidence=vuln,
+        ))
+    return findings
+
+
+def _cloud_findings(cloud_assets: dict) -> list[Finding]:
+    findings: list[Finding] = []
+    for bucket in cloud_assets.get("buckets", []):
+        if bucket.get("access") != "public":
+            continue
+        name = bucket.get("name", "")
+        provider = bucket.get("provider", "cloud").upper()
+        findings.append(Finding(
+            id=f"cloud-bucket-public:{name}",
+            title=f"Public cloud bucket: {name}",
+            severity="high",
+            description=(
+                f"The {provider} bucket {name} allows public listing, which can expose files "
+                "that were not meant to be browsable."
+            ),
+            recommendation="Disable public access and listing on the bucket, then review its contents.",
+            evidence=bucket,
+        ))
     return findings
 
 

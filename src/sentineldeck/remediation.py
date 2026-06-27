@@ -330,6 +330,35 @@ def _coop(finding: Finding, target: str) -> Fix:
     )
 
 
+def _vulnerable_js(finding: Finding, target: str) -> Fix:
+    evidence = finding.evidence or {}
+    lib = evidence.get("library", "the library")
+    return _fix(
+        f"Upgrade {lib} to a patched release",
+        f"# {evidence.get('advisory', 'Known vulnerability in this version.')}\n"
+        f"# Upgrade {lib} and re-deploy the bundled asset (or bump the CDN <script> URL):\n"
+        f"npm install {lib}@latest",
+        "config",
+    )
+
+
+def _cloud_bucket(finding: Finding, target: str) -> Fix:
+    evidence = finding.evidence or {}
+    provider = evidence.get("provider", "s3")
+    name = evidence.get("name", "your-bucket")
+    if provider == "s3":
+        snippet = (
+            f"aws s3api put-public-access-block --bucket {name} \\\n"
+            "  --public-access-block-configuration "
+            "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+        )
+    elif provider == "gcs":
+        snippet = f"gsutil iam ch -d allUsers gs://{name}\n# remove allUsers / allAuthenticatedUsers"
+    else:
+        snippet = f"# Azure: set container '{name}' public access level to Private (no anonymous access)."
+    return _fix("Remove public access from the bucket", snippet, "config")
+
+
 # --- Dispatch ---------------------------------------------------------------
 
 _BUILDERS: dict[str, Builder] = {
@@ -374,6 +403,10 @@ def remediation_for(finding: Finding, target: str) -> Fix | None:
         return _generic_header(finding, target)
     if finding.id.startswith("subdomain-takeover"):
         return _takeover(finding, target)
+    if finding.id.startswith("vulnerable-js-library"):
+        return _vulnerable_js(finding, target)
+    if finding.id.startswith("cloud-bucket-public"):
+        return _cloud_bucket(finding, target)
     return None
 
 

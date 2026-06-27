@@ -6,11 +6,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from sentineldeck.models import ScanReport
 from sentineldeck.remediation import attach_remediations
 from sentineldeck.risk.scoring import build_findings, grade, score_findings
+from sentineldeck.scanners.cloud_assets import analyze_cloud_assets
 from sentineldeck.scanners.dns_hygiene import analyze_dns_hygiene
 from sentineldeck.scanners.dns_lookup import Resolver, resolve  # noqa: F401 - resolve re-exported for tests
 from sentineldeck.scanners.domain import normalize_domain, resolve_domain
 from sentineldeck.scanners.domain_intel import analyze_domain_intel
 from sentineldeck.scanners.email_security import analyze_email_security
+from sentineldeck.scanners.fingerprint import detect_vulnerable_js, fetch_page, fingerprint
 from sentineldeck.scanners.http_headers import (
     check_http_redirect,
     check_security_txt,
@@ -18,7 +20,7 @@ from sentineldeck.scanners.http_headers import (
     fetch_headers,
     missing_security_headers,
 )
-from sentineldeck.scanners.subdomains import discover_subdomains
+from sentineldeck.scanners.subdomains import discover_subdomains, fetch_hostsearch
 from sentineldeck.scanners.takeover import detect_takeovers
 from sentineldeck.scanners.tls import inspect_tls
 from sentineldeck.suppressions import apply_suppressions
@@ -36,6 +38,7 @@ STAGE_LABELS = {
     "dns_hygiene": "DNS hygiene (CAA, DNSSEC, NS, IPv6, DANE)",
     "domain_intel": "Domain registration (RDAP)",
     "subdomains": "Certificate-transparency subdomains",
+    "page": "Technology fingerprint",
 }
 
 
@@ -72,7 +75,8 @@ def scan_domain(
             "email": pool.submit(analyze_email_security, domain, resolver),
             "dns_hygiene": pool.submit(analyze_dns_hygiene, domain, resolver),
             "domain_intel": pool.submit(analyze_domain_intel, domain, timeout),
-            "subdomains": pool.submit(discover_subdomains, domain, timeout),
+            "subdomains": pool.submit(discover_subdomains, domain, timeout, host_fetcher=fetch_hostsearch),
+            "page": pool.submit(fetch_page, domain, timeout),
         }
         name_by_future = {future: name for name, future in futures.items()}
         results: dict = {}
@@ -96,6 +100,22 @@ def scan_domain(
     headers = http.get("headers", {})
     cookies = http.get("cookies", [])
 
+    # The homepage HTML drives technology fingerprinting, vulnerable-JS detection,
+    # and cloud-bucket discovery.
+    page = results["page"]
+    if page.get("reachable"):
+        technologies = {
+            "status": "ok",
+            "detected": fingerprint(page),
+            "vulnerable_js": detect_vulnerable_js(page.get("body", "")),
+        }
+    else:
+        technologies = {"status": "error", "detected": [], "vulnerable_js": []}
+
+    cloud = analyze_cloud_assets(page.get("body", ""))
+    if cloud.get("buckets"):
+        _notify("Cloud storage exposure")
+
     report.checks = {
         "dns": results["dns"],
         "http": http,
@@ -107,6 +127,8 @@ def scan_domain(
         "domain_intel": results["domain_intel"],
         "subdomains": results["subdomains"],
         "takeover": takeover,
+        "technologies": technologies,
+        "cloud_assets": cloud,
     }
     report.findings = build_findings(report.checks)
     attach_remediations(report.findings, domain)

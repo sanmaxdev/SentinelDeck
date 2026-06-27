@@ -24,7 +24,13 @@ def test_scan_domain_includes_email_security(monkeypatch):
         lambda domain, resolver=None: {"caa": {"present": True}, "dnssec": {"enabled": True}},
     )
     monkeypatch.setattr("sentineldeck.scanner.analyze_domain_intel", lambda domain, timeout=10: {"status": "error"})
-    monkeypatch.setattr("sentineldeck.scanner.discover_subdomains", lambda domain, timeout=10: {"status": "error"})
+    monkeypatch.setattr(
+        "sentineldeck.scanner.discover_subdomains",
+        lambda domain, timeout=10, host_fetcher=None: {"status": "error"},
+    )
+    monkeypatch.setattr(
+        "sentineldeck.scanner.fetch_page", lambda domain, timeout=10: {"reachable": False, "body": ""}
+    )
 
     report = scan_domain("example.com")
 
@@ -48,7 +54,11 @@ def test_scan_domain_reports_progress(monkeypatch):
     monkeypatch.setattr("sentineldeck.scanner.analyze_domain_intel", lambda domain, timeout=10: {"status": "error"})
     monkeypatch.setattr(
         "sentineldeck.scanner.discover_subdomains",
-        lambda domain, timeout=10: {"status": "skipped", "subdomains": []},
+        lambda domain, timeout=10, host_fetcher=None: {"status": "skipped", "subdomains": []},
+    )
+    monkeypatch.setattr(
+        "sentineldeck.scanner.fetch_page",
+        lambda domain, timeout=10: {"reachable": True, "headers": {}, "body": ""},
     )
 
     labels: list[str] = []
@@ -56,4 +66,5 @@ def test_scan_domain_reports_progress(monkeypatch):
 
     assert "DNS resolution" in labels
     assert "TLS certificate" in labels
-    assert len(labels) >= 8
+    assert "Technology fingerprint" in labels
+    assert len(labels) >= 9

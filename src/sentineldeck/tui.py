@@ -213,6 +213,14 @@ def render_scan_summary(report) -> str:
         out.append("  " + fg("FINDINGS  ", BRIGHT, bold=True) + "  ".join(chips))
         out.append("")
 
+    tech = (getattr(report, "checks", {}) or {}).get("technologies", {}).get("detected", [])
+    if tech:
+        names = " · ".join(
+            t["name"] + (f" {t['version']}" if t.get("version") else "") for t in tech[:6]
+        )
+        out.append("  " + fg("STACK     ", BRIGHT, bold=True) + fg(names, MUTED))
+        out.append("")
+
     top = sorted(scored, key=lambda f: SEVERITY_ORDER.index(f.severity.lower()))[:5]
     for f in top:
         sev = f.severity.lower()
@@ -291,8 +299,10 @@ _CHECK_SURFACES = [
               "CORS policy", "Clickjacking / framing", "Cookie flags + SameSite", "security.txt"]),
     ("TLS", ["Trust + failure reason", "Expiry", "Protocol version", "Key strength",
              "Hostname match"]),
-    ("Attack surface", ["Certificate-transparency subdomains", "Sensitive subdomain labels",
-                        "Subdomain takeover"]),
+    ("Attack surface", ["Certificate-transparency + passive-DNS subdomains",
+                        "Sensitive subdomain labels", "Subdomain takeover"]),
+    ("Recon", ["Technology fingerprint (CMS, framework, server, CDN)",
+               "Vulnerable JavaScript libraries", "Cloud-storage (S3/GCS/Azure) exposure"]),
     ("Domain", ["RDAP registration", "Newly-registered domain age"]),
 ]
 

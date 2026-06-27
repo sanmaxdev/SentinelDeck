@@ -168,7 +168,8 @@ own footprint.
 | **TLS** | Trust and failure reason (expired, self-signed, hostname mismatch, untrusted), expiry, protocol version, key strength, signature algorithm, hostname match |
 | **Email** | MX, SPF (policy, multiple records, 10-lookup limit), DMARC (policy, subdomain policy, enforcement coverage), DKIM (presence + key strength), MTA-STS (record + policy validation), TLS-RPT, BIMI |
 | **Domain** | Registrar, registration age, and expiry via RDAP |
-| **Subdomains** | Public subdomain discovery via certificate transparency (crt.sh, CertSpotter), sensitive-name flagging, and dangling-CNAME takeover detection |
+| **Subdomains** | Public subdomain discovery via certificate transparency (crt.sh, CertSpotter) and passive DNS (HackerTarget), sensitive-name flagging, and dangling-CNAME takeover detection |
+| **Recon** | Technology fingerprint (CMS, framework, web server, CDN, analytics, with versions), vulnerable JavaScript libraries, and public cloud-storage (S3/GCS/Azure) exposure |
 
 Every issue is scored by severity into a 0 to 100 risk score and an A to F grade.
 

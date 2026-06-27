@@ -51,6 +51,28 @@ def test_discover_includes_common_name():
     assert out["sensitive"] == ["vpn.example.com"]
 
 
+def test_discover_merges_passive_dns_hosts():
+    out = discover_subdomains(
+        "example.com",
+        fetcher=lambda d, t: crt("www.example.com"),
+        host_fetcher=lambda d, t: ["api.example.com", "www.example.com", "skip.other.org"],
+    )
+
+    assert out["subdomains"] == ["api.example.com", "www.example.com"]
+    assert "passive DNS" in out["source"]
+
+
+def test_discover_passive_dns_works_when_ct_fails():
+    out = discover_subdomains(
+        "example.com",
+        fetcher=lambda d, t: None,
+        host_fetcher=lambda d, t: ["vpn.example.com"],
+    )
+
+    assert out["status"] == "ok"
+    assert out["subdomains"] == ["vpn.example.com"]
+
+
 def test_discover_handles_empty_logs_as_ok():
     out = discover_subdomains("example.com", fetcher=lambda d, t: [])
 

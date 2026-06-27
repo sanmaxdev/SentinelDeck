@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [0.5.0] - 2026-06-27
+
+### Added
+
+- Technology fingerprinting: identifies the CMS, framework, web server, CDN, and
+  analytics from the homepage (headers + HTML), with versions where detectable.
+  The detected stack shows in the scan summary and the JSON report.
+- Vulnerable JavaScript detection: flags known-vulnerable library versions
+  (jQuery, Bootstrap, lodash, moment, AngularJS, and more) from script tags,
+  each with an advisory and an upgrade fix.
+- Cloud-storage exposure: finds S3, Google Cloud Storage, and Azure Blob buckets
+  referenced on the site and flags any that allow public listing (high), with a
+  provider-specific lock-down fix.
+- A passive-DNS subdomain source (HackerTarget) merged with certificate
+  transparency for broader attack-surface coverage.
+
 ## [0.4.0] - 2026-06-25
 
 ### Added

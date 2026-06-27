@@ -19,6 +19,7 @@ CERTSPOTTER_URL = (
     "https://api.certspotter.com/v1/issuances?domain={domain}"
     "&include_subdomains=true&expand=dns_names"
 )
+HACKERTARGET_URL = "https://api.hackertarget.com/hostsearch/?q={domain}"
 USER_AGENT = "SentinelDeck/0.1"
 MAX_STORED = 1000
 
@@ -32,6 +33,8 @@ SENSITIVE_LABELS = frozenset({
 })
 
 Fetcher = Callable[[str, int], "list[dict[str, Any]] | None"]
+# A host fetcher returns plain hostnames from a passive-DNS source (no certs).
+HostFetcher = Callable[[str, int], "list[str] | None"]
 
 
 def _fetch_json(url: str, timeout: int, attempts: int = 1) -> list[dict[str, Any]] | None:
@@ -59,6 +62,21 @@ def _default_fetch(domain: str, timeout: int) -> list[dict[str, Any]] | None:
     return entries
 
 
+def fetch_hostsearch(domain: str, timeout: int) -> list[str] | None:
+    """Query HackerTarget's passive-DNS host search (no API key) for hostnames."""
+    url = HACKERTARGET_URL.format(domain=urllib.parse.quote(domain))
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=max(timeout, 15)) as response:
+            text = response.read().decode("utf-8", "replace")
+    except Exception:  # noqa: BLE001 - any failure just means no passive-DNS data
+        return None
+    if not text or text.lower().startswith("error"):
+        return None
+    hosts = [line.split(",", 1)[0].strip().lower() for line in text.splitlines()]
+    return [h for h in hosts if h] or None
+
+
 def _hostnames(entries: list[dict[str, Any]], domain: str) -> set[str]:
     suffix = "." + domain
     names: set[str] = set()
@@ -81,22 +99,41 @@ def _is_sensitive(host: str, domain: str) -> bool:
     return any(label in SENSITIVE_LABELS for label in sub.split("."))
 
 
-def discover_subdomains(domain: str, timeout: int = 10, fetcher: Fetcher = _default_fetch) -> dict[str, Any]:
-    """Return the subdomains of ``domain`` seen in certificate transparency."""
+def discover_subdomains(
+    domain: str,
+    timeout: int = 10,
+    fetcher: Fetcher = _default_fetch,
+    host_fetcher: HostFetcher | None = None,
+) -> dict[str, Any]:
+    """Return the subdomains of ``domain`` from certificate transparency, plus an
+    optional passive-DNS source when ``host_fetcher`` is supplied."""
     entries = fetcher(domain, timeout)
-    if not isinstance(entries, list):
+    ct_ok = isinstance(entries, list)
+    names = _hostnames(entries, domain) if ct_ok else set()
+    sources = ["certificate transparency"] if ct_ok else []
+
+    extra = host_fetcher(domain, timeout) if host_fetcher else None
+    if extra:
+        suffix = "." + domain
+        for candidate in extra:
+            name = candidate.strip().lower().lstrip("*.")
+            if name and name != domain and name.endswith(suffix) and " " not in name:
+                names.add(name)
+        sources.append("passive DNS")
+
+    if not ct_ok and not extra:
         return {
             "status": "error", "source": "certificate transparency",
             "count": 0, "subdomains": [], "sensitive": [],
         }
 
-    names = sorted(_hostnames(entries, domain))
-    sensitive = sorted(host for host in names if _is_sensitive(host, domain))
+    ordered = sorted(names)
+    sensitive = sorted(host for host in ordered if _is_sensitive(host, domain))
     return {
         "status": "ok",
-        "source": "certificate transparency",
-        "count": len(names),
-        "subdomains": names[:MAX_STORED],
+        "source": ", ".join(sources),
+        "count": len(ordered),
+        "subdomains": ordered[:MAX_STORED],
         "sensitive": sensitive[:MAX_STORED],
-        "truncated": len(names) > MAX_STORED,
+        "truncated": len(ordered) > MAX_STORED,
     }

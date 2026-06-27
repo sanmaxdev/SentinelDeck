@@ -94,6 +94,20 @@ def test_remediation_for_phase2_header_findings():
         assert needle in fix["snippet"], fid
 
 
+def test_remediation_for_phase3_findings():
+    js = remediation_for(
+        f("vulnerable-js-library:jquery", "medium", evidence={"library": "jquery", "advisory": "CVE-x"}),
+        "example.com",
+    )
+    assert js is not None and "jquery" in js["snippet"]
+
+    bucket = remediation_for(
+        f("cloud-bucket-public:leaky", "high", evidence={"provider": "s3", "name": "leaky"}),
+        "example.com",
+    )
+    assert bucket is not None and "leaky" in bucket["snippet"]
+
+
 def test_remediation_unknown_finding_returns_none():
     assert remediation_for(f("domain-newly-registered", severity="low"), "example.com") is None
 
