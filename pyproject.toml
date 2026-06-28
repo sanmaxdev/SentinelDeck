@@ -46,7 +46,7 @@ version = {attr = "sentineldeck.__version__"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-sentineldeck = ["py.typed"]
+sentineldeck = ["py.typed", "webui/*.html", "webui/*.css", "webui/*.js"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

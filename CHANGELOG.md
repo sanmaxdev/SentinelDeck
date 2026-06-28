@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [0.6.0] - 2026-06-28
+
+### Added
+
+- A local web dashboard. `sentineldeck dashboard` starts a localhost-only server,
+  opens your browser, and runs the same passive scan with live progress streamed
+  over Server-Sent Events. Results render as a grid of cards: the grade, findings
+  with copy-paste fixes, technology stack, TLS, email authentication, DNS,
+  subdomains, security headers, domain registration, and cloud storage. It needs
+  no extra dependencies and binds to 127.0.0.1 only.
+
 ## [0.5.0] - 2026-06-27
 
 ### Added

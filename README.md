@@ -17,6 +17,8 @@ pipx run sentineldeck scan example.com        # or:  uvx sentineldeck scan examp
 
 Prefer a permanent install? `pip install -U sentineldeck`, then `sentineldeck scan example.com`.
 
+Prefer a UI? `sentineldeck dashboard` opens an interactive web dashboard in your browser (local only, no extra dependencies).
+
 <p align="center">
   <img src="assets/demo.svg" alt="SentinelDeck scanning a domain: grade, findings, and a copy-paste fix" width="720">
 </p>
@@ -209,6 +211,16 @@ pip install -e ".[dev]"
 
 Run `sentineldeck` with no arguments at any time for a colored overview of the
 commands and examples.
+
+Launch the web dashboard (a local, browser-based UI that runs the same passive
+scan and renders it as a live grid of cards):
+
+```bash
+sentineldeck dashboard
+```
+
+It serves on `127.0.0.1:8765` only and opens your browser automatically; pass
+`--port` to change the port or `--no-open` to skip opening the browser.
 
 Scan a domain and write a JSON report:
 

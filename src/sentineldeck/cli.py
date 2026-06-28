@@ -7,6 +7,7 @@ import sys
 
 from sentineldeck import __version__, tui
 from sentineldeck.alerts import send_alert, should_alert
+from sentineldeck.dashboard import serve as serve_dashboard
 from sentineldeck.diff import ReportDelta, diff_reports
 from sentineldeck.models import Finding
 from sentineldeck.monitor import DEFAULT_STATE_DIR, monitor_domain
@@ -93,6 +94,12 @@ def build_parser() -> argparse.ArgumentParser:
     monitor.add_argument(
         "--exit-code", action="store_true", help="Return exit code 1 if the posture regressed."
     )
+
+    dash = subparsers.add_parser("dashboard", help="Launch the local web dashboard in your browser.")
+    dash.add_argument("--host", default="127.0.0.1", help="Bind address (default: 127.0.0.1, localhost only).")
+    dash.add_argument("--port", type=int, default=8765, help="Port to serve on (default: 8765).")
+    dash.add_argument("--no-open", action="store_true", help="Do not open the browser automatically.")
+    dash.add_argument("--timeout", type=int, default=10, help="Per-scan network timeout in seconds (default: 10).")
 
     subparsers.add_parser("checks", help="List every check SentinelDeck performs.")
 
@@ -253,6 +260,11 @@ def main(argv: list[str] | None = None) -> int:
             sent = send_alert(args.webhook, delta)
             print(f"Webhook alert: {'sent' if sent else 'failed to send'}")
         return 1 if (args.exit_code and delta.regressed) else 0
+
+    if args.command == "dashboard":
+        return serve_dashboard(
+            host=args.host, port=args.port, open_browser=not args.no_open, timeout=args.timeout
+        )
 
     if args.command == "checks":
         print(tui.checks_screen())

@@ -137,6 +137,7 @@ def _logo() -> list[str]:
 def home_screen() -> str:
     cmds = [
         ("scan", "Run a safe passive scan against a domain"),
+        ("dashboard", "Open the interactive web dashboard in your browser"),
         ("report", "Render a saved report as HTML, a score card, or a badge"),
         ("diff", "Compare two scans and show what changed"),
         ("monitor", "Scan on a schedule and alert on regressions"),
@@ -145,7 +146,7 @@ def home_screen() -> str:
         ("version", "Print the installed version"),
     ]
     examples = [
-        "sentineldeck scan example.com",
+        "sentineldeck dashboard",
         "sentineldeck scan example.com --html report.html",
         "sentineldeck explain dmarc-missing",
     ]

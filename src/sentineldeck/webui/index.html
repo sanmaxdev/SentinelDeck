@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SentinelDeck</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <span class="brand-name">SENTINEL<span class="brand-accent">DECK</span></span>
+      <span class="brand-tag">passive attack-surface radar</span>
+    </div>
+    <form id="scan-form" class="scan-form" autocomplete="off">
+      <input id="domain" name="domain" type="text" placeholder="example.com" aria-label="Domain to scan" required>
+      <button id="scan-btn" type="submit">Scan</button>
+    </form>
+  </header>
+
+  <main id="main">
+    <section id="intro" class="intro">
+      <h1>Scan a domain's public attack surface</h1>
+      <p>Passive only. The same lookups a browser or mail server makes &mdash; no intrusive scanning.
+         You get a grade, prioritised findings, and a copy-paste fix for each.</p>
+      <div class="examples">
+        <button class="chip" data-domain="example.com">example.com</button>
+        <button class="chip" data-domain="github.com">github.com</button>
+        <button class="chip" data-domain="cloudflare.com">cloudflare.com</button>
+      </div>
+    </section>
+
+    <section id="progress" class="progress hidden">
+      <div class="spinner"></div>
+      <div class="progress-body">
+        <div class="progress-title">Scanning <span id="progress-domain"></span></div>
+        <ul id="progress-steps" class="progress-steps"></ul>
+      </div>
+    </section>
+
+    <section id="error" class="error hidden"></section>
+
+    <section id="results" class="results hidden">
+      <div id="hero" class="hero"></div>
+      <div id="findings" class="findings"></div>
+      <div id="cards" class="cards"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span id="foot-version"></span>
+    <a href="https://github.com/sanmaxdev/SentinelDeck" target="_blank" rel="noopener">github.com/sanmaxdev/SentinelDeck</a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
