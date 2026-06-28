@@ -43,7 +43,17 @@ function startScan(domain) {
     li.textContent = JSON.parse(ev.data).label;
     $("#progress-steps").appendChild(li);
   });
-  source.addEventListener("done", (ev) => { source.close(); source = null; render(JSON.parse(ev.data)); finish(); });
+  source.addEventListener("done", (ev) => {
+    source.close(); source = null;
+    try {
+      render(JSON.parse(ev.data));
+    } catch (err) {
+      hide(results);
+      errBox.textContent = "RENDER ERROR // " + (err && err.message ? err.message : err);
+      show(errBox);
+    }
+    finish();
+  });
   source.addEventListener("failed", (ev) => {
     source.close(); source = null;
     let msg = "SCAN FAILED.";
@@ -436,6 +446,16 @@ function cardSecurityTxt(http) {
   if (!st) return "";
   return card("security.txt",
     `<div class="row"><span class="k">Present</span>${st.present ? `<span class="v ok">yes</span>` : `<span class="v warn">no</span>`}</div>`);
+}
+
+function cardReputation(r) {
+  if (!r || r.status !== "ok") return "";
+  const listed = r.listed
+    ? `<span class="v bad">listed (${esc((r.sources || []).join(", "))})</span>`
+    : `<span class="v ok">clean</span>`;
+  return card("Threat reputation",
+    `<div class="row"><span class="k">Status</span>${listed}</div>` +
+    (r.listed ? row("Malicious URLs", esc(r.url_count)) : ""));
 }
 
 function cardBlocklists(b) {

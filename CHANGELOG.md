@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [1.2.1] - 2026-06-29
+
+### Fixed
+
+- The dashboard could hang on "scanning" after a scan finished because the
+  threat-reputation card renderer was missing. Restored it, and a render error
+  now shows a message instead of leaving the page stuck.
+
 ## [1.2.0] - 2026-06-29
 
 ### Changed
