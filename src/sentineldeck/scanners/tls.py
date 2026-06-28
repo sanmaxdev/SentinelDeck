@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from cryptography import x509
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, rsa
 from cryptography.x509.oid import ExtensionOID, NameOID
 
@@ -13,6 +14,22 @@ OUTDATED_PROTOCOLS = {"SSLv2", "SSLv3", "TLSv1", "TLSv1.1"}
 WEAK_SIGNATURE_HASHES = {"md5", "sha1"}
 MIN_RSA_BITS = 2048
 MIN_EC_BITS = 256
+_EKU_NAMES = {
+    "1.3.6.1.5.5.7.3.1": "TLS Web Server Authentication",
+    "1.3.6.1.5.5.7.3.2": "TLS Web Client Authentication",
+    "1.3.6.1.5.5.7.3.3": "Code Signing",
+    "1.3.6.1.5.5.7.3.4": "Email Protection",
+    "1.3.6.1.5.5.7.3.8": "Time Stamping",
+    "1.3.6.1.5.5.7.3.9": "OCSP Signing",
+}
+
+
+def _extended_key_usage(cert: x509.Certificate) -> list[str]:
+    try:
+        ext = cert.extensions.get_extension_for_oid(ExtensionOID.EXTENDED_KEY_USAGE)
+    except x509.ExtensionNotFound:
+        return []
+    return [_EKU_NAMES.get(oid.dotted_string, oid.dotted_string) for oid in ext.value]
 
 
 def classify_verify_error(exc: ssl.SSLCertVerificationError) -> str:
@@ -115,6 +132,9 @@ def summarize_certificate(
         "key_bits": key_bits,
         "signature_algorithm": sig_hash,
         "hostname_match": hostname_matches(hostname, san) if san else None,
+        "serial": format(cert.serial_number, "x"),
+        "fingerprint_sha256": cert.fingerprint(hashes.SHA256()).hex(),
+        "extended_key_usage": _extended_key_usage(cert),
     }
 
 
@@ -132,27 +152,37 @@ def _verify_chain(domain: str, timeout: int) -> tuple[bool, str | None, str | No
         return False, "unreachable", None
 
 
-def _fetch_leaf(domain: str, timeout: int) -> tuple[bytes | None, str | None]:
+def _fetch_leaf(domain: str, timeout: int) -> dict[str, Any] | None:
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
     try:
+        context.set_alpn_protocols(["h2", "http/1.1"])
+    except (NotImplementedError, OSError):
+        pass
+    try:
         with socket.create_connection((domain, 443), timeout=timeout) as sock:
             with context.wrap_socket(sock, server_hostname=domain) as wrapped:
-                return wrapped.getpeercert(binary_form=True), wrapped.version()
+                return {
+                    "der": wrapped.getpeercert(binary_form=True),
+                    "protocol": wrapped.version(),
+                    "cipher": wrapped.cipher(),
+                    "alpn": wrapped.selected_alpn_protocol(),
+                }
     except OSError:
-        return None, None
+        return None
 
 
 def inspect_tls(domain: str, timeout: int = 10) -> dict[str, Any]:
     verified, reason, protocol = _verify_chain(domain, timeout)
-    der, der_protocol = _fetch_leaf(domain, timeout)
+    leaf = _fetch_leaf(domain, timeout)
+    der = leaf["der"] if leaf else None
 
     if not verified and der is None:
         return {"reachable": False, "valid": False, "reason": reason or "unreachable",
                 "error": "could not establish a TLS connection on port 443"}
 
-    negotiated = protocol or der_protocol
+    negotiated = protocol or (leaf["protocol"] if leaf else None)
     result: dict[str, Any] = {
         "reachable": True,
         "valid": verified,
@@ -161,6 +191,14 @@ def inspect_tls(domain: str, timeout: int = 10) -> dict[str, Any]:
         "protocol": negotiated,
         "protocol_outdated": negotiated in OUTDATED_PROTOCOLS if negotiated else False,
     }
+    if leaf and leaf.get("cipher"):
+        name, _, bits = leaf["cipher"]
+        result["cipher_suite"] = name
+        result["cipher_bits"] = bits
+        result["alpn"] = leaf.get("alpn")
+        result["forward_secrecy"] = (
+            negotiated == "TLSv1.3" or "ECDHE" in (name or "") or "DHE" in (name or "")
+        )
     if der is not None:
         try:
             result.update(summarize_certificate(x509.load_der_x509_certificate(der), domain))

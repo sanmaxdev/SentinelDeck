@@ -29,7 +29,7 @@ def test_dashboard_serves_static_assets():
 
 
 def test_dashboard_scan_streams_progress_and_report(monkeypatch):
-    def fake_scan(domain, timeout=10, progress=None):
+    def fake_scan(domain, timeout=10, progress=None, active=False):
         if progress:
             progress("DNS resolution")
         return ScanReport(target=domain, generated_at="t", risk_score=10, grade="B", checks={}, findings=[])

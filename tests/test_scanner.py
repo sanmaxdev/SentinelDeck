@@ -2,7 +2,7 @@ from sentineldeck.scanner import scan_domain
 
 
 def test_scan_domain_includes_email_security(monkeypatch):
-    dns = {"resolved": True, "addresses": ["127.0.0.1"]}
+    dns = {"resolved": True, "addresses": []}
     http = {"reachable": True, "headers": {}}
     tls = {"valid": True, "days_remaining": 90}
     email = {
@@ -46,6 +46,10 @@ def test_scan_domain_includes_email_security(monkeypatch):
     monkeypatch.setattr(
         "sentineldeck.scanner.analyze_tls_config",
         lambda domain: {"status": "error", "weak_protocols": []},
+    )
+    monkeypatch.setattr(
+        "sentineldeck.scanner.check_blocklists",
+        lambda domain: {"status": "ok", "results": [], "blocked_security": []},
     )
 
     report = scan_domain("example.com")
@@ -91,6 +95,10 @@ def test_scan_domain_reports_progress(monkeypatch):
     monkeypatch.setattr(
         "sentineldeck.scanner.analyze_tls_config",
         lambda domain: {"status": "error", "weak_protocols": []},
+    )
+    monkeypatch.setattr(
+        "sentineldeck.scanner.check_blocklists",
+        lambda domain: {"status": "ok", "results": [], "blocked_security": []},
     )
 
     labels: list[str] = []

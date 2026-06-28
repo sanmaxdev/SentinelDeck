@@ -4,7 +4,23 @@ from sentineldeck.scanners.web_content import (
     extract_links,
     extract_social_tags,
     fetch_robots,
+    fetch_sitemap,
 )
+
+
+def test_fetch_robots_returns_disallow_paths():
+    text = "User-agent: *\nDisallow: /admin\nDisallow: /cart"
+    out = fetch_robots("e.com", fetcher=lambda url, timeout=10: text)
+
+    assert out["disallows"] == ["/admin", "/cart"]
+
+
+def test_fetch_sitemap_lists_pages():
+    xml = "<urlset><url><loc>https://e.com/</loc></url><url><loc>https://e.com/x</loc></url></urlset>"
+    out = fetch_sitemap("https://e.com/sitemap.xml", fetcher=lambda url, timeout=10: xml)
+
+    assert out["urls"] == 2
+    assert out["pages"] == ["https://e.com/", "https://e.com/x"]
 
 
 def test_extract_links_splits_internal_and_external():

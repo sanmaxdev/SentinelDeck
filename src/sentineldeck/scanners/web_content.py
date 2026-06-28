@@ -91,17 +91,21 @@ def _http_get(url: str, timeout: int = 10) -> str | None:
 def fetch_robots(domain: str, fetcher=_http_get) -> dict:
     body = fetcher(f"https://{domain}/robots.txt")
     if body is None:
-        return {"present": False, "sitemaps": [], "disallow_count": 0}
+        return {"present": False, "sitemaps": [], "disallow_count": 0, "disallows": []}
     sitemaps = re.findall(r"(?im)^\s*sitemap:\s*(\S+)", body)
-    disallows = len(re.findall(r"(?im)^\s*disallow:\s*\S", body))
-    return {"present": True, "sitemaps": sitemaps[:20], "disallow_count": disallows}
+    disallows = re.findall(r"(?im)^\s*disallow:\s*(\S+)", body)
+    return {
+        "present": True, "sitemaps": sitemaps[:20],
+        "disallow_count": len(disallows), "disallows": disallows[:25],
+    }
 
 
 def fetch_sitemap(url: str, fetcher=_http_get) -> dict:
     body = fetcher(url)
     if body is None:
-        return {"present": False, "urls": 0}
-    return {"present": True, "urls": len(re.findall(r"<loc>", body, re.IGNORECASE))}
+        return {"present": False, "urls": 0, "pages": []}
+    pages = re.findall(r"<loc>\s*([^<]+?)\s*</loc>", body, re.IGNORECASE)
+    return {"present": True, "urls": len(pages), "pages": pages[:25]}
 
 
 def analyze_web_content(domain: str, page: dict, fetcher=_http_get) -> dict:

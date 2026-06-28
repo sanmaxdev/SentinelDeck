@@ -8,7 +8,10 @@ import json
 import urllib.request
 
 USER_AGENT = "SentinelDeck/0.1"
-IPAPI_URL = "http://ip-api.com/json/{ip}?fields=status,country,countryCode,city,regionName,isp,org,as,query"
+IPAPI_URL = (
+    "http://ip-api.com/json/{ip}"
+    "?fields=status,country,countryCode,city,regionName,isp,org,as,query,lat,lon,timezone"
+)
 
 
 def _default_fetch(ip: str, timeout: int = 10) -> dict | None:
@@ -38,4 +41,7 @@ def analyze_ip_intel(ip: str | None, timeout: int = 10, fetcher=_default_fetch) 
         "isp": data.get("isp"),
         "org": data.get("org"),
         "asn": data.get("as"),
+        "lat": data.get("lat"),
+        "lon": data.get("lon"),
+        "timezone": data.get("timezone"),
     }

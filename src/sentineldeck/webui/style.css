@@ -113,4 +113,15 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px; }
 .tag { background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; font-size: 12.5px; color: var(--text); }
 .muted { color: var(--dim); font-size: 13px; }
 
+.active-toggle { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12.5px; cursor: pointer; user-select: none; }
+.active-toggle input { accent-color: var(--red); }
+.dns-group { margin-bottom: 10px; }
+.dns-type { color: var(--red-soft); font-size: 11px; font-weight: 700; letter-spacing: .5px; margin-bottom: 3px; }
+.dns-rec { color: var(--text); font-size: 12.5px; font-family: ui-monospace, Consolas, monospace; word-break: break-all; padding: 1px 0; }
+.og-preview { width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border); }
+.passes { display: flex; flex-direction: column; gap: 5px; }
+.pass-item { color: var(--A); font-size: 13px; }
+.pass-item::before { content: "\2713"; color: var(--A); font-weight: 800; margin-right: 7px; }
+.map { width: 100%; height: auto; }
+
 .foot { display: flex; justify-content: space-between; max-width: 1180px; margin: 10px auto 40px; padding: 0 28px; color: var(--dim); font-size: 12.5px; }

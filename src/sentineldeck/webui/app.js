@@ -33,7 +33,8 @@ function startScan(domain) {
   show(prog);
   btn.disabled = true; btn.textContent = "Scanning…";
 
-  source = new EventSource(`/api/scan?domain=${encodeURIComponent(domain)}`);
+  const active = document.getElementById("active-scan").checked ? "&active=1" : "";
+  source = new EventSource(`/api/scan?domain=${encodeURIComponent(domain)}${active}`);
   source.addEventListener("progress", (ev) => {
     const li = document.createElement("li");
     li.textContent = JSON.parse(ev.data).label;
@@ -65,18 +66,32 @@ function render(report) {
   renderHero(report, findings);
   renderFindings(findings);
   $("#cards").innerHTML = [
+    cardPasses(checks.passes),
     cardStack(checks.technologies),
     cardReputation(checks.reputation),
+    cardBlocklists(checks.blocklists),
     cardTLS(checks.tls),
+    cardTLSConn(checks.tls),
     cardTLSConfig(checks.tls_config),
     cardEmail(checks.email_security),
     cardDNS(checks.dns_hygiene, checks.dns),
+    cardDNSRecords(checks.dns_records),
     cardIP(checks.ip_intel),
+    cardMap(checks.ip_intel),
+    cardServerStatus(checks.http),
+    cardHostNames(checks.ip_intel),
     cardPorts(checks.ports),
     cardSubdomains(checks.subdomains),
     cardTyposquat(checks.typosquatting),
     cardHeaders(checks.missing_security_headers, checks.header_issues),
-    cardWebContent(checks.web_content),
+    cardHeadersRaw(checks.http),
+    cardCookies(checks.http),
+    cardFirewall(checks.web_content),
+    cardSocial(checks.web_content),
+    cardRobots(checks.web_content),
+    cardPages(checks.web_content),
+    cardLinks(checks.web_content),
+    cardSecurityTxt(checks.http),
     cardRedirects(checks.redirect_chain),
     cardDomain(checks.domain_intel),
     cardCloud(checks.cloud_assets),
@@ -176,6 +191,10 @@ function cardTLS(tls) {
     (tls.key_type ? row("Key", esc(tls.key_type) + " " + esc(tls.key_bits || "")) : "") +
     (tls.signature_algorithm ? row("Signature", esc(tls.signature_algorithm)) : "") +
     (tls.issuer_org ? row("Issuer", esc(tls.issuer_org)) : "") +
+    (tls.serial ? row("Serial", esc(tls.serial.slice(0, 20)) + (tls.serial.length > 20 ? "…" : "")) : "") +
+    (tls.fingerprint_sha256 ? row("SHA-256", esc(tls.fingerprint_sha256.slice(0, 20)) + "…") : "") +
+    (tls.extended_key_usage && tls.extended_key_usage.length
+      ? row("Key usage", esc(tls.extended_key_usage.join(", "))) : "") +
     flag("Hostname match", tls.hostname_match));
 }
 
@@ -244,9 +263,163 @@ function cardIP(ip) {
   return card("Server / IP intel",
     row("IP", esc(ip.ip)) +
     (loc ? row("Location", esc(loc)) : "") +
+    (ip.timezone ? row("Timezone", esc(ip.timezone)) : "") +
     (ip.org ? row("Org", esc(ip.org)) : "") +
     (ip.isp ? row("ISP", esc(ip.isp)) : "") +
     (ip.asn ? row("ASN", esc(ip.asn)) : ""));
+}
+
+function cardTLSConn(tls) {
+  if (!tls || !tls.reachable || !tls.cipher_suite) return "";
+  return card("TLS connection",
+    row("Cipher suite", esc(tls.cipher_suite)) +
+    (tls.cipher_bits ? row("Strength", esc(tls.cipher_bits) + "-bit") : "") +
+    (tls.alpn ? row("ALPN", esc(tls.alpn)) : "") +
+    flag("Forward secrecy", tls.forward_secrecy));
+}
+
+function cardDNSRecords(d) {
+  if (!d) return "";
+  const block = (label, list) => {
+    if (!list || !list.length) return "";
+    const rows = list.slice(0, 8).map((r) => `<div class="dns-rec">${esc(r)}</div>`).join("");
+    return `<div class="dns-group"><div class="dns-type">${label}</div>${rows}</div>`;
+  };
+  const body = ["A", "AAAA", "MX", "NS", "SOA", "TXT", "CAA"].map((t) => block(t, d[t])).join("");
+  return body ? card("DNS records", body) : "";
+}
+
+function cardServerStatus(http) {
+  if (!http || !http.reachable) return "";
+  return card("Server status",
+    flag("Online", true) +
+    (http.status != null ? row("Status code", esc(http.status), http.status < 400 ? "ok" : "warn") : "") +
+    (http.response_time_ms != null ? row("Response time", esc(http.response_time_ms) + " ms") : ""));
+}
+
+function cardHostNames(ip) {
+  if (!ip || !(ip.hostnames || []).length) return "";
+  return card("Host names", ip.hostnames.map((h) => row("PTR", esc(h))).join(""));
+}
+
+function cardHeadersRaw(http) {
+  const headers = (http && http.headers) || {};
+  const keys = Object.keys(headers);
+  if (!keys.length) return "";
+  const rows = keys.slice(0, 22).map((k) =>
+    `<div class="row"><span class="k">${esc(k)}</span><span class="v" style="max-width:60%">${esc(String(headers[k]).slice(0, 60))}</span></div>`).join("");
+  return card("HTTP headers", rows);
+}
+
+function cardCookies(http) {
+  const cookies = (http && http.cookies) || [];
+  if (!cookies.length) return "";
+  const rows = cookies.slice(0, 10).map((c) => {
+    const name = c.split("=")[0];
+    const secure = /secure/i.test(c) && /httponly/i.test(c);
+    return row(name, secure ? "secure" : "weak flags", secure ? "ok" : "warn");
+  }).join("");
+  return card("Cookies", rows);
+}
+
+function cardFirewall(w) {
+  if (!w || w.status !== "ok") return "";
+  const waf = w.waf || [];
+  return card("Firewall / WAF",
+    `<div class="row"><span class="k">Detected</span>${waf.length
+      ? `<span class="v ok">${waf.map(esc).join(", ")}</span>`
+      : `<span class="v muted">none detected</span>`}</div>`);
+}
+
+function cardSocial(w) {
+  const tags = (w && w.social) || {};
+  const keys = Object.keys(tags);
+  if (!keys.length) return "";
+  const img = tags["og:image"] || tags["twitter:image"];
+  const rows = ["og:title", "og:description", "twitter:card"].filter((k) => tags[k])
+    .map((k) => row(k, esc(String(tags[k]).slice(0, 50)))).join("");
+  const preview = img ? `<img class="og-preview" src="${esc(img)}" alt="" loading="lazy" onerror="this.style.display='none'">` : "";
+  return card("Social tags", rows + preview);
+}
+
+function cardRobots(w) {
+  const robots = (w && w.robots) || {};
+  if (!robots.present) return "";
+  const dis = (robots.disallows || []).slice(0, 10).map((p) => `<div class="dns-rec">Disallow ${esc(p)}</div>`).join("");
+  return card("Crawl rules (robots.txt)",
+    row("Sitemaps", esc((robots.sitemaps || []).length)) +
+    row("Disallow rules", esc(robots.disallow_count)) + dis);
+}
+
+function cardPages(w) {
+  const sitemap = (w && w.sitemap) || {};
+  if (!sitemap.present || !(sitemap.pages || []).length) return "";
+  const pages = sitemap.pages.slice(0, 12).map((p) => `<div class="dns-rec">${esc(p)}</div>`).join("");
+  return card("Pages (sitemap)", row("URLs", esc(sitemap.urls)) + pages);
+}
+
+function cardLinks(w) {
+  const links = (w && w.links) || {};
+  if (links.internal == null) return "";
+  const ext = (links.external_domains || []).slice(0, 12)
+    .map((d) => `<span class="tag">${esc(d)}</span>`).join("");
+  return card("Linked pages",
+    row("Internal links", esc(links.internal)) +
+    row("External domains", esc(links.external)) +
+    (ext ? `<div class="tags" style="margin-top:10px">${ext}</div>` : ""));
+}
+
+function cardSecurityTxt(http) {
+  const st = http && http.security_txt;
+  if (!st) return "";
+  return card("security.txt",
+    `<div class="row"><span class="k">Present</span>${st.present
+      ? `<span class="v ok">yes</span>` : `<span class="v warn">no</span>`}</div>`);
+}
+
+function cardBlocklists(b) {
+  if (!b || b.status !== "ok" || !(b.results || []).length) return "";
+  const rows = b.results.map((r) => {
+    const v = r.blocked === true ? `<span class="v bad">blocked</span>`
+      : r.blocked === false ? `<span class="v ok">not blocked</span>`
+      : `<span class="v muted">unknown</span>`;
+    return `<div class="row"><span class="k">${esc(r.filter)}</span>${v}</div>`;
+  }).join("");
+  return card("DNS block lists", rows);
+}
+
+function cardPasses(passes) {
+  if (!passes || !passes.length) return "";
+  const items = passes.map((p) => `<div class="pass-item">${esc(p)}</div>`).join("");
+  return card(`Passes (${passes.length})`, `<div class="passes">${items}</div>`);
+}
+
+function cardMap(ip) {
+  if (!ip || ip.status !== "ok" || ip.lat == null || ip.lon == null) return "";
+  const W = 280, H = 140;
+  const x = ((Number(ip.lon) + 180) / 360) * W;
+  const y = ((90 - Number(ip.lat)) / 180) * H;
+  const loc = [ip.city, ip.country].filter(Boolean).join(", ");
+  return card("Server location", `
+    <svg viewBox="0 0 ${W} ${H}" class="map" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="${W}" height="${H}" rx="8" fill="#0c0d13" stroke="#242636"/>
+      <g stroke="#1f2430" stroke-width="0.5">
+        <line x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}"/>
+        <line x1="${W / 2}" y1="0" x2="${W / 2}" y2="${H}"/>
+        <line x1="${W / 4}" y1="0" x2="${W / 4}" y2="${H}"/>
+        <line x1="${3 * W / 4}" y1="0" x2="${3 * W / 4}" y2="${H}"/>
+        <line x1="0" y1="${H / 4}" x2="${W}" y2="${H / 4}"/>
+        <line x1="0" y1="${3 * H / 4}" x2="${W}" y2="${3 * H / 4}"/>
+      </g>
+      <g fill="#1c2433" opacity="0.8">
+        <ellipse cx="62" cy="55" rx="26" ry="18"/><ellipse cx="78" cy="95" rx="13" ry="20"/>
+        <ellipse cx="150" cy="52" rx="20" ry="14"/><ellipse cx="158" cy="92" rx="17" ry="22"/>
+        <ellipse cx="205" cy="60" rx="34" ry="22"/><ellipse cx="232" cy="103" rx="13" ry="9"/>
+      </g>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="#dc2626" opacity="0.3"/>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="#ef4444"/>
+    </svg>
+    <div class="muted" style="margin-top:8px">${esc(loc)} &middot; ${esc(ip.lat)}, ${esc(ip.lon)}</div>`);
 }
 
 function cardRedirects(rc) {

@@ -173,13 +173,13 @@ own footprint.
 | --- | --- |
 | **DNS** | Resolution, CAA issuance control, DNSSEC, nameserver redundancy, IPv6 (AAAA) readiness, DANE/TLSA |
 | **HTTP** | HTTPS reachability, HTTP to HTTPS redirect, security headers + value quality, CORS policy, cookie flags + SameSite, Cross-Origin-Opener-Policy, security.txt, version disclosure |
-| **TLS** | Trust and failure reason (expired, self-signed, hostname mismatch, untrusted), expiry, protocol version, key strength, signature algorithm, hostname match, supported-protocol enumeration, and a Mozilla-style config grade |
+| **TLS** | Trust and failure reason (expired, self-signed, hostname mismatch, untrusted), expiry, protocol version, key strength, signature algorithm, hostname match, supported-protocol enumeration, Mozilla-style config grade, cipher suite, ALPN, forward secrecy, and certificate serial/fingerprint/EKU |
 | **Email** | MX, SPF (policy, multiple records, 10-lookup limit), DMARC (policy, subdomain policy, enforcement coverage), DKIM (presence + key strength), MTA-STS (record + policy validation), TLS-RPT, BIMI |
 | **Domain** | Registrar, registration age, and expiry via RDAP |
 | **Subdomains** | Public subdomain discovery via certificate transparency (crt.sh, CertSpotter) and passive DNS (HackerTarget), sensitive-name flagging, and dangling-CNAME takeover detection |
 | **Recon** | Technology fingerprint (CMS, framework, web server, CDN, analytics, with versions), vulnerable JavaScript libraries, and public cloud-storage (S3/GCS/Azure) exposure |
-| **Infrastructure** | IP geolocation + ASN/hosting, full redirect chain, WAF/CDN detection, robots.txt, sitemap.xml, link analysis, and social meta tags |
-| **Threat intel** | Typosquatting / lookalike-domain detection, malware/phishing reputation (URLhaus), and Wayback archive history |
+| **Infrastructure** | IP geolocation + ASN/hosting, reverse DNS, server response time, full redirect chain, WAF/CDN detection, robots.txt, sitemap.xml, link analysis, and social meta tags |
+| **Threat intel** | Typosquatting / lookalike-domain detection, malware/phishing reputation (URLhaus), DNS blocklist checks (Cloudflare, Quad9, AdGuard…), and Wayback archive history |
 
 Every issue is scored by severity into a 0 to 100 risk score and an A to F grade.
 

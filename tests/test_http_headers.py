@@ -43,6 +43,8 @@ def test_evaluate_headers_accepts_strong_configuration():
         "x-frame-options": "DENY",
         "referrer-policy": "strict-origin-when-cross-origin",
         "cross-origin-opener-policy": "same-origin",
+        "cross-origin-resource-policy": "same-origin",
+        "cross-origin-embedder-policy": "require-corp",
     }
 
     assert evaluate_headers(headers) == []
@@ -88,6 +90,11 @@ def test_evaluate_headers_flags_missing_coop_only_when_reachable():
     assert "no-coop" in {i["id"] for i in evaluate_headers({"server": "nginx"})}
     # an unreachable site (no headers) must not produce a COOP finding
     assert "no-coop" not in {i["id"] for i in evaluate_headers({})}
+
+
+def test_evaluate_headers_flags_missing_corp_and_coep():
+    ids = {i["id"] for i in evaluate_headers({"server": "nginx"})}
+    assert "no-corp" in ids and "no-coep" in ids
 
 
 def test_evaluate_headers_flags_insecure_cookies():

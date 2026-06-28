@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -32,10 +33,12 @@ def fetch_headers(domain: str, timeout: int = 10) -> dict[str, Any]:
 
     for method in ("HEAD", "GET"):
         request = urllib.request.Request(url, method=method, headers={"User-Agent": USER_AGENT})
+        start = time.perf_counter()
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 result["reachable"] = True
                 result["status"] = response.status
+                result["response_time_ms"] = round((time.perf_counter() - start) * 1000)
                 result["headers"] = {key.lower(): value for key, value in response.headers.items()}
                 result["cookies"] = response.headers.get_all("set-cookie") or []
             return result
@@ -45,6 +48,7 @@ def fetch_headers(domain: str, timeout: int = 10) -> dict[str, Any]:
                 continue
             result["reachable"] = True
             result["status"] = exc.code
+            result["response_time_ms"] = round((time.perf_counter() - start) * 1000)
             result["headers"] = {key.lower(): value for key, value in exc.headers.items()}
             result["cookies"] = exc.headers.get_all("set-cookie") or []
             return result
@@ -221,6 +225,20 @@ def evaluate_headers(headers: dict[str, str], cookies: list[str] | None = None) 
             "Cross-Origin-Opener-Policy is not set, so the page shares a browsing-context group with "
             "cross-origin openers (a building block for cross-origin isolation).",
             "Set Cross-Origin-Opener-Policy: same-origin where compatible.", {},
+        ))
+
+    if headers and "cross-origin-resource-policy" not in headers:
+        issues.append(_issue(
+            "no-corp", "No Cross-Origin-Resource-Policy", "info",
+            "Cross-Origin-Resource-Policy is not set, so other origins can embed this site's resources.",
+            "Set Cross-Origin-Resource-Policy: same-origin or same-site where appropriate.", {},
+        ))
+
+    if headers and "cross-origin-embedder-policy" not in headers:
+        issues.append(_issue(
+            "no-coep", "No Cross-Origin-Embedder-Policy", "info",
+            "Cross-Origin-Embedder-Policy is not set, which is required for cross-origin isolation.",
+            "Set Cross-Origin-Embedder-Policy: require-corp to enable cross-origin isolation.", {},
         ))
 
     if "x-powered-by" in headers:

@@ -233,7 +233,68 @@ def build_findings(checks: dict) -> list[Finding]:
             evidence={"ports": risky_ports},
         ))
 
+    blocked = checks.get("blocklists", {}).get("blocked_security", [])
+    if blocked:
+        findings.append(Finding(
+            id="domain-on-dns-blocklist",
+            title="Domain is blocked by a security DNS filter",
+            severity="medium",
+            description=(
+                f"The domain is blocked by {', '.join(blocked)}, which usually means it is flagged "
+                "as malware or phishing."
+            ),
+            recommendation="If unexpected, investigate for compromise and request review after cleanup.",
+            evidence={"filters": blocked},
+        ))
+
     return findings
+
+
+def compute_passes(checks: dict) -> list[str]:
+    """What the domain gets right, for the dashboard's 'Passes' roll-up."""
+    passes: list[str] = []
+    tls = checks.get("tls", {})
+    if tls.get("valid"):
+        passes.append("TLS certificate valid and trusted")
+    if tls.get("forward_secrecy"):
+        passes.append("TLS uses forward secrecy")
+    tls_config = checks.get("tls_config", {})
+    if tls_config.get("status") == "ok" and not tls_config.get("weak_protocols"):
+        passes.append("No deprecated TLS protocols")
+    email = checks.get("email_security", {})
+    if email.get("spf", {}).get("present"):
+        passes.append("SPF record present")
+    if email.get("dmarc", {}).get("policy") in ("quarantine", "reject"):
+        passes.append("DMARC is enforced")
+    if email.get("dkim", {}).get("present"):
+        passes.append("DKIM detected")
+    if email.get("mta_sts", {}).get("present"):
+        passes.append("MTA-STS configured")
+    hygiene = checks.get("dns_hygiene", {})
+    if hygiene.get("dnssec", {}).get("enabled"):
+        passes.append("DNSSEC enabled")
+    if hygiene.get("caa", {}).get("present"):
+        passes.append("CAA records present")
+    if hygiene.get("ipv6", {}).get("present"):
+        passes.append("Reachable over IPv6")
+    if checks.get("http", {}).get("https_redirect"):
+        passes.append("HTTP redirects to HTTPS")
+    missing = checks.get("missing_security_headers") or {}
+    for header in SECURITY_HEADERS:
+        if header not in missing:
+            passes.append(f"{header} present")
+    reputation = checks.get("reputation", {})
+    if reputation.get("status") == "ok" and not reputation.get("listed"):
+        passes.append("Not on threat feeds")
+    blocklists = checks.get("blocklists", {})
+    if blocklists.get("status") == "ok" and not blocklists.get("blocked_security"):
+        passes.append("Not on security DNS blocklists")
+    takeover = checks.get("takeover", {})
+    if takeover.get("status") == "ok" and not takeover.get("candidates"):
+        passes.append("No subdomain takeover detected")
+    if not checks.get("cloud_assets", {}).get("buckets"):
+        passes.append("No exposed cloud buckets")
+    return passes
 
 
 def _technology_findings(technologies: dict) -> list[Finding]:

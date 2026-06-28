@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [1.1.0] - 2026-06-29
+
+### Added
+
+- Much deeper data in the dashboard: full DNS records (A/AAAA/MX/NS/SOA/TXT),
+  raw HTTP headers, cookies, social tags with an Open Graph image preview,
+  robots.txt rules, sitemap pages, linked domains, a security.txt card, and a
+  server-status card with response time.
+- New checks: TLS connection detail (cipher suite, ALPN, forward secrecy) and
+  certificate serial / SHA-256 fingerprint / extended key usage; reverse DNS host
+  names; a server-location map; DNS blocklist checks (Cloudflare, Quad9, AdGuard,
+  and others); and Cross-Origin-Resource-Policy / Embedder-Policy headers.
+- A "Passes" roll-up that shows what the domain gets right.
+- An active-scan toggle in the dashboard (off by default, runs the port scan).
+
 ## [1.0.0] - 2026-06-28
 
 ### Added

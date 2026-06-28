@@ -79,6 +79,7 @@ def _make_handler(timeout: int):
         def _scan(self) -> None:
             params = parse_qs(urlparse(self.path).query)
             target = (params.get("domain") or [""])[0].strip()
+            active = (params.get("active") or ["0"])[0] == "1"
             self._sse_open()
             try:
                 domain = normalize_domain(target)
@@ -87,7 +88,8 @@ def _make_handler(timeout: int):
                 return
             try:
                 report = scan_domain(
-                    domain, timeout=timeout, progress=lambda label: self._emit("progress", {"label": label})
+                    domain, timeout=timeout, active=active,
+                    progress=lambda label: self._emit("progress", {"label": label}),
                 )
                 self._emit("done", report.to_dict())
             except Exception as exc:  # noqa: BLE001 - report the failure to the page

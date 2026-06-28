@@ -15,7 +15,11 @@ def analyze_dns_hygiene(domain: str, resolver: Resolver = resolve) -> dict:
     ns, ns_status = resolver(domain, "NS")
     aaaa, aaaa_status = resolver(domain, "AAAA")
     tlsa, tlsa_status = resolver(f"_443._tcp.{domain}", "TLSA")
+    soa, soa_status = resolver(domain, "SOA")
+    txt, txt_status = resolver(domain, "TXT")
     return {
+        "soa": {"records": soa, "status": soa_status},
+        "txt": {"records": txt, "status": txt_status},
         "caa": {
             "present": bool(caa),
             "records": caa,

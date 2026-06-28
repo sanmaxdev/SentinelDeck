@@ -5,8 +5,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from sentineldeck.models import ScanReport
 from sentineldeck.remediation import attach_remediations
-from sentineldeck.risk.scoring import build_findings, grade, score_findings
+from sentineldeck.risk.scoring import build_findings, compute_passes, grade, score_findings
 from sentineldeck.scanners.archive import archive_history
+from sentineldeck.scanners.blocklists import check_blocklists
 from sentineldeck.scanners.cloud_assets import analyze_cloud_assets
 from sentineldeck.scanners.dns_hygiene import analyze_dns_hygiene
 from sentineldeck.scanners.dns_lookup import Resolver, resolve  # noqa: F401 - resolve re-exported for tests
@@ -53,6 +54,7 @@ STAGE_LABELS = {
     "archive": "Archive history (Wayback)",
     "tls_config": "TLS configuration",
     "ports": "Open ports (active)",
+    "blocklists": "DNS blocklists",
 }
 
 
@@ -97,6 +99,7 @@ def scan_domain(
             "reputation": pool.submit(check_reputation, domain),
             "archive": pool.submit(archive_history, domain),
             "tls_config": pool.submit(analyze_tls_config, domain),
+            "blocklists": pool.submit(check_blocklists, domain),
         }
         if active:
             futures["ports"] = pool.submit(scan_ports, domain)
@@ -143,7 +146,22 @@ def scan_domain(
 
     addresses = results["dns"].get("addresses") or []
     ip_intel = analyze_ip_intel(addresses[0] if addresses else None, timeout)
+    if addresses and addresses[0].count(".") == 3:
+        reverse = ".".join(reversed(addresses[0].split("."))) + ".in-addr.arpa"
+        ptr, _ = resolver(reverse, "PTR")
+        ip_intel["hostnames"] = ptr
     _notify("IP intelligence (geo, ASN)")
+
+    dns_hygiene_result = results["dns_hygiene"]
+    dns_records = {
+        "A": addresses,
+        "AAAA": dns_hygiene_result.get("ipv6", {}).get("records", []),
+        "MX": results["email"].get("mx", {}).get("records", []),
+        "NS": dns_hygiene_result.get("ns", {}).get("records", []),
+        "SOA": dns_hygiene_result.get("soa", {}).get("records", []),
+        "TXT": dns_hygiene_result.get("txt", {}).get("records", []),
+        "CAA": dns_hygiene_result.get("caa", {}).get("records", []),
+    }
 
     report.checks = {
         "dns": results["dns"],
@@ -166,8 +184,11 @@ def scan_domain(
         "archive": results["archive"],
         "tls_config": results["tls_config"],
         "ports": results.get("ports", {"status": "skipped", "open": []}),
+        "blocklists": results["blocklists"],
+        "dns_records": dns_records,
     }
     report.findings = build_findings(report.checks)
+    report.checks["passes"] = compute_passes(report.checks)
     attach_remediations(report.findings, domain)
     if suppressions:
         apply_suppressions(report.findings, suppressions)
