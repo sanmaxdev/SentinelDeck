@@ -92,6 +92,14 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px; }
 .finding-body pre { background: #0c0d13; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; overflow-x: auto; color: #cbd5e1; font-size: 12.5px; white-space: pre-wrap; }
 .fix-label { color: var(--red-soft); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; }
 
+/* Remediation simulator */
+.sim { display: flex; align-items: center; gap: 16px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; flex-wrap: wrap; }
+.sim-label { font-weight: 800; color: var(--red-soft); text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+.sim-grade { font-size: 28px; font-weight: 900; line-height: 1; }
+.sim-score { font-weight: 700; }
+.fixtoggle { margin-left: auto; color: var(--muted); font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.fixtoggle input { accent-color: #22c55e; width: 15px; height: 15px; }
+
 /* Cards grid */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }

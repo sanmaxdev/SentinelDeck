@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [1.0.0] - 2026-06-28
+
+### Added
+
+- Interactive remediation simulator in the web dashboard: tick a finding as
+  fixed and the projected grade and risk score recompute live, the same idea as
+  the HTML report's simulator, now in the browser dashboard.
+- A web-dashboard preview in the README.
+
+### Changed
+
+- First stable release. SentinelDeck now spans DNS, email authentication, HTTP,
+  TLS, certificate transparency, technology fingerprinting, infrastructure
+  intelligence, and threat intelligence, delivered through a colored CLI and a
+  local web dashboard, passive by default with an opt-in active mode.
+
 ## [0.9.0] - 2026-06-28
 
 ### Added

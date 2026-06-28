@@ -5,7 +5,10 @@ const form = $("#scan-form"), input = $("#domain"), btn = $("#scan-btn");
 const intro = $("#intro"), prog = $("#progress"), errBox = $("#error"), results = $("#results");
 const SEV = { critical: "var(--crit)", high: "var(--high)", medium: "var(--medium)", low: "var(--low)", info: "var(--info)" };
 const SEV_ORDER = ["critical", "high", "medium", "low", "info"];
+const POINTS = { critical: 40, high: 25, medium: 12, low: 5, info: 0 };
+const gradeFromScore = (s) => (s >= 80 ? "F" : s >= 60 ? "D" : s >= 40 ? "C" : s >= 20 ? "B" : "A");
 let source = null;
+let SIM = [];
 
 $("#foot-version").textContent = "SentinelDeck dashboard";
 document.querySelectorAll(".chip").forEach((c) =>
@@ -101,16 +104,23 @@ function renderHero(report, findings) {
 
 function renderFindings(findings) {
   const scored = findings.slice().sort((a, b) => SEV_ORDER.indexOf(a.severity) - SEV_ORDER.indexOf(b.severity));
-  $("#findings").innerHTML = scored.map((f) => {
-    const color = SEV[f.severity] || "var(--info)";
+  SIM = scored.map((f) => ({
+    f, fixed: false, pts: f.confidence === "indeterminate" ? 0 : (POINTS[f.severity] || 0),
+  }));
+
+  const cards = SIM.map((item, i) => {
+    const f = item.f, color = SEV[f.severity] || "var(--info)";
     const fix = f.remediation ? `
       <div class="fix-label">Fix${f.remediation.kind ? " &middot; " + esc(f.remediation.kind) : ""}</div>
       <pre>${esc(f.remediation.snippet)}</pre>` : "";
+    const toggle = item.pts > 0
+      ? `<label class="fixtoggle"><input type="checkbox" data-i="${i}"> mark fixed</label>` : "";
     return `
       <div class="finding" style="border-left-color:${color}">
-        <div class="finding-head" onclick="this.parentNode.querySelector('.finding-body').classList.toggle('hidden')">
+        <div class="finding-head">
           <span class="sev-tag" style="background:${color};color:#0a0a0f">${esc(f.severity)}</span>
-          <span class="finding-title">${esc(f.title)}</span>
+          <span class="finding-title" onclick="this.closest('.finding').querySelector('.finding-body').classList.toggle('hidden')">${esc(f.title)}</span>
+          ${toggle}
         </div>
         <div class="finding-body hidden">
           <div>${esc(f.description)}</div>
@@ -118,7 +128,26 @@ function renderFindings(findings) {
           ${fix}
         </div>
       </div>`;
-  }).join("") || '<div class="muted">No findings.</div>';
+  }).join("");
+
+  $("#findings").innerHTML = `<div class="sim" id="sim"></div>` + (cards || '<div class="muted">No findings.</div>');
+  $("#findings").querySelectorAll(".fixtoggle input").forEach((cb) =>
+    cb.addEventListener("change", () => { SIM[+cb.dataset.i].fixed = cb.checked; updateSim(); }));
+  updateSim();
+}
+
+function updateSim() {
+  const projected = Math.min(100, SIM.filter((x) => !x.fixed).reduce((s, x) => s + x.pts, 0));
+  const applied = SIM.filter((x) => x.fixed && x.pts > 0).length;
+  const g = gradeFromScore(projected);
+  const sim = document.getElementById("sim");
+  if (!sim) return;
+  if (!SIM.some((x) => x.pts > 0)) { sim.style.display = "none"; return; }
+  sim.innerHTML =
+    `<span class="sim-label">Remediation simulator</span>` +
+    `<span class="sim-grade" style="color:var(--${g})">${g}</span>` +
+    `<span class="sim-score">projected risk ${projected}/100</span>` +
+    `<span class="muted">${applied ? applied + " fix" + (applied === 1 ? "" : "es") + " applied" : "tick findings to watch the grade improve"}</span>`;
 }
 
 /* --- cards --------------------------------------------------------------- */

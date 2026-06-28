@@ -12,7 +12,7 @@ license = {text = "MIT"}
 authors = [{name = "sanmaxdev"}]
 keywords = ["security", "attack-surface", "osint", "headers", "ssl", "sme"]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
   "Intended Audience :: Information Technology",
   "Intended Audience :: System Administrators",

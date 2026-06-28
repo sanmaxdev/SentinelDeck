@@ -49,7 +49,7 @@ Prefer a UI? `sentineldeck dashboard` opens an interactive web dashboard in your
     <td>
       <a href="https://pypi.org/project/sentineldeck/"><img alt="pypi" src="https://img.shields.io/pypi/v/sentineldeck?style=flat-square&labelColor=0a0a0f&color=dc2626&label=pypi"></a>
       <img alt="downloads" src="https://img.shields.io/pypi/dm/sentineldeck?style=flat-square&labelColor=0a0a0f&color=dc2626&label=downloads">
-      <img alt="status" src="https://img.shields.io/badge/status-beta-dc2626?style=flat-square&labelColor=0a0a0f">
+      <img alt="status" src="https://img.shields.io/badge/status-stable%201.0-dc2626?style=flat-square&labelColor=0a0a0f">
       <img alt="python" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-dc2626?style=flat-square&labelColor=0a0a0f">
       <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-dc2626?style=flat-square&labelColor=0a0a0f"></a>
     </td>
@@ -73,6 +73,12 @@ findings, each with a concrete copy-paste fix.
 It is built for the people who need that picture fast: an agency qualifying a
 prospect, a consultant producing a client report, or a small team checking its
 own footprint.
+
+<p align="center">
+  <img src="assets/dashboard.svg" alt="SentinelDeck web dashboard" width="840">
+</p>
+
+<p align="center"><code>sentineldeck dashboard</code> opens this in your browser. Local only, zero extra dependencies, with a live remediation simulator that recomputes the grade as you tick fixes.</p>
 
 ## Contents
 
