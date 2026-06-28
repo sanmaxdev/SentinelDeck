@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from sentineldeck.models import ScanReport
 from sentineldeck.remediation import attach_remediations
 from sentineldeck.risk.scoring import build_findings, grade, score_findings
+from sentineldeck.scanners.archive import archive_history
 from sentineldeck.scanners.cloud_assets import analyze_cloud_assets
 from sentineldeck.scanners.dns_hygiene import analyze_dns_hygiene
 from sentineldeck.scanners.dns_lookup import Resolver, resolve  # noqa: F401 - resolve re-exported for tests
@@ -22,9 +23,11 @@ from sentineldeck.scanners.http_headers import (
     trace_redirects,
 )
 from sentineldeck.scanners.ip_intel import analyze_ip_intel
+from sentineldeck.scanners.reputation import check_reputation
 from sentineldeck.scanners.subdomains import discover_subdomains, fetch_hostsearch
 from sentineldeck.scanners.takeover import detect_takeovers
 from sentineldeck.scanners.tls import inspect_tls
+from sentineldeck.scanners.typosquat import detect_typosquats
 from sentineldeck.scanners.web_content import analyze_web_content
 from sentineldeck.suppressions import apply_suppressions
 
@@ -43,6 +46,9 @@ STAGE_LABELS = {
     "subdomains": "Certificate-transparency subdomains",
     "page": "Technology fingerprint",
     "redirect_chain": "Redirect chain",
+    "typosquat": "Lookalike domains (typosquatting)",
+    "reputation": "Threat reputation",
+    "archive": "Archive history (Wayback)",
 }
 
 
@@ -82,6 +88,9 @@ def scan_domain(
             "subdomains": pool.submit(discover_subdomains, domain, timeout, host_fetcher=fetch_hostsearch),
             "page": pool.submit(fetch_page, domain, timeout),
             "redirect_chain": pool.submit(trace_redirects, domain, timeout),
+            "typosquat": pool.submit(detect_typosquats, domain, resolver),
+            "reputation": pool.submit(check_reputation, domain),
+            "archive": pool.submit(archive_history, domain),
         }
         name_by_future = {future: name for name, future in futures.items()}
         results: dict = {}
@@ -144,6 +153,9 @@ def scan_domain(
         "redirect_chain": results["redirect_chain"],
         "web_content": web_content,
         "ip_intel": ip_intel,
+        "typosquatting": results["typosquat"],
+        "reputation": results["reputation"],
+        "archive": results["archive"],
     }
     report.findings = build_findings(report.checks)
     attach_remediations(report.findings, domain)

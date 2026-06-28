@@ -306,6 +306,8 @@ _CHECK_SURFACES = [
                "Vulnerable JavaScript libraries", "Cloud-storage (S3/GCS/Azure) exposure"]),
     ("Infrastructure", ["IP geolocation, ASN, hosting provider", "Full redirect chain",
                         "WAF / CDN detection", "robots.txt, sitemap, link & social-tag analysis"]),
+    ("Threat intel", ["Typosquatting / lookalike domains", "Malware / phishing reputation",
+                      "Wayback archive history"]),
     ("Domain", ["RDAP registration", "Newly-registered domain age"]),
 ]
 

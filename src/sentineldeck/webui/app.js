@@ -63,16 +63,19 @@ function render(report) {
   renderFindings(findings);
   $("#cards").innerHTML = [
     cardStack(checks.technologies),
+    cardReputation(checks.reputation),
     cardTLS(checks.tls),
     cardEmail(checks.email_security),
     cardDNS(checks.dns_hygiene, checks.dns),
     cardIP(checks.ip_intel),
     cardSubdomains(checks.subdomains),
+    cardTyposquat(checks.typosquatting),
     cardHeaders(checks.missing_security_headers, checks.header_issues),
     cardWebContent(checks.web_content),
     cardRedirects(checks.redirect_chain),
     cardDomain(checks.domain_intel),
     cardCloud(checks.cloud_assets),
+    cardArchive(checks.archive),
   ].filter(Boolean).join("");
   show(results);
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -222,6 +225,34 @@ function cardRedirects(rc) {
   return card("Redirect chain",
     row("Hops", esc(rc.count)) +
     (rc.downgrade ? row("Downgrade", "HTTPS&rarr;HTTP", "bad") : "") + hops);
+}
+
+function cardReputation(r) {
+  if (!r || r.status !== "ok") return "";
+  const listed = r.listed
+    ? `<span class="v bad">listed (${esc((r.sources || []).join(", "))})</span>`
+    : `<span class="v ok">clean</span>`;
+  return card("Threat reputation",
+    `<div class="row"><span class="k">Status</span>${listed}</div>` +
+    (r.listed ? row("Malicious URLs", esc(r.url_count)) : ""));
+}
+
+function cardTyposquat(t) {
+  if (!t || t.status !== "ok") return "";
+  const reg = t.registered || [];
+  const tags = reg.slice(0, 16).map((r) =>
+    `<span class="tag" style="border-color:var(--medium);color:var(--medium)">${esc(r.domain)}</span>`).join("");
+  return card("Lookalike domains",
+    row("Variants checked", esc(t.checked)) +
+    row("Registered", esc(reg.length), reg.length ? "warn" : "ok") +
+    (tags ? `<div class="tags" style="margin-top:10px">${tags}</div>` : ""));
+}
+
+function cardArchive(a) {
+  if (!a || a.status !== "ok" || !a.snapshots) return "";
+  return card("Archive history",
+    (a.first ? row("First archived", esc(a.first)) : "") +
+    row("Snapshots", esc(a.snapshots) + (a.truncated ? "+" : "")));
 }
 
 function cardWebContent(w) {

@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [0.8.0] - 2026-06-28
+
+### Added
+
+- Typosquatting / lookalike-domain detection: generates misspelling and
+  homoglyph variants of the domain and reports which are registered and resolve,
+  with a finding and brand-protection guidance. A single scan becomes brand
+  monitoring.
+- Threat reputation: checks the domain against the abuse.ch URLhaus feed for
+  malware/phishing listings (best-effort; degrades gracefully where the feed is
+  unreachable).
+- Wayback Machine archive history: first-archived year and snapshot count.
+- New dashboard cards for lookalike domains, threat reputation, and archive
+  history.
+
 ## [0.7.0] - 2026-06-28
 
 ### Added

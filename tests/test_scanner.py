@@ -37,6 +37,12 @@ def test_scan_domain_includes_email_security(monkeypatch):
     )
     monkeypatch.setattr("sentineldeck.scanner.analyze_web_content", lambda domain, page: {"status": "error"})
     monkeypatch.setattr("sentineldeck.scanner.analyze_ip_intel", lambda ip, timeout=10: {"status": "error"})
+    monkeypatch.setattr(
+        "sentineldeck.scanner.detect_typosquats",
+        lambda domain, resolver=None: {"status": "ok", "registered": []},
+    )
+    monkeypatch.setattr("sentineldeck.scanner.check_reputation", lambda domain: {"status": "error", "listed": False})
+    monkeypatch.setattr("sentineldeck.scanner.archive_history", lambda domain: {"status": "ok", "snapshots": 0})
 
     report = scan_domain("example.com")
 
@@ -72,6 +78,12 @@ def test_scan_domain_reports_progress(monkeypatch):
     )
     monkeypatch.setattr("sentineldeck.scanner.analyze_web_content", lambda domain, page: {"status": "ok"})
     monkeypatch.setattr("sentineldeck.scanner.analyze_ip_intel", lambda ip, timeout=10: {"status": "ok"})
+    monkeypatch.setattr(
+        "sentineldeck.scanner.detect_typosquats",
+        lambda domain, resolver=None: {"status": "ok", "registered": []},
+    )
+    monkeypatch.setattr("sentineldeck.scanner.check_reputation", lambda domain: {"status": "ok", "listed": False})
+    monkeypatch.setattr("sentineldeck.scanner.archive_history", lambda domain: {"status": "ok", "snapshots": 0})
 
     labels: list[str] = []
     scan_domain("example.com", progress=labels.append)

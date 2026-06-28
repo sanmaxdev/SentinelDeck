@@ -173,6 +173,7 @@ own footprint.
 | **Subdomains** | Public subdomain discovery via certificate transparency (crt.sh, CertSpotter) and passive DNS (HackerTarget), sensitive-name flagging, and dangling-CNAME takeover detection |
 | **Recon** | Technology fingerprint (CMS, framework, web server, CDN, analytics, with versions), vulnerable JavaScript libraries, and public cloud-storage (S3/GCS/Azure) exposure |
 | **Infrastructure** | IP geolocation + ASN/hosting, full redirect chain, WAF/CDN detection, robots.txt, sitemap.xml, link analysis, and social meta tags |
+| **Threat intel** | Typosquatting / lookalike-domain detection, malware/phishing reputation (URLhaus), and Wayback archive history |
 
 Every issue is scored by severity into a 0 to 100 risk score and an A to F grade.
 

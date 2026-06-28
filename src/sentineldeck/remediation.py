@@ -368,10 +368,36 @@ def _redirect_downgrade(finding: Finding, target: str) -> Fix:
     )
 
 
+def _lookalike(finding: Finding, target: str) -> Fix:
+    domains = (finding.evidence or {}).get("domains", [])
+    listing = "\n".join(f"  - {d}" for d in domains[:10]) or "  (see the report)"
+    return _fix(
+        "Defend against lookalike domains",
+        "# Registered lookalikes found:\n" + listing +
+        "\n\n# 1. Monitor new registrations and certificates that mimic your brand.\n"
+        "# 2. Defensively register the closest variants.\n"
+        "# 3. Report active phishing to the registrar and Google Safe Browsing.",
+        "text",
+    )
+
+
+def _malicious_listing(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Investigate and request delisting",
+        f"# {target} appears on a threat feed (e.g. URLhaus).\n"
+        "# 1. Check for compromise: hosting, recent changes, injected content.\n"
+        "# 2. Clean up and harden, then request review / delisting:\n"
+        "#    https://urlhaus.abuse.ch/   and   https://search.google.com/search-console",
+        "text",
+    )
+
+
 # --- Dispatch ---------------------------------------------------------------
 
 _BUILDERS: dict[str, Builder] = {
     "redirect-downgrades-to-http": _redirect_downgrade,
+    "lookalike-domains": _lookalike,
+    "domain-listed-malicious": _malicious_listing,
     "missing-strict-transport-security": _hsts,
     "missing-content-security-policy": _csp,
     "no-https-redirect": _no_https_redirect,

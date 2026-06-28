@@ -182,6 +182,34 @@ def build_findings(checks: dict) -> list[Finding]:
             evidence=checks.get("redirect_chain", {}),
         ))
 
+    registered = checks.get("typosquatting", {}).get("registered", [])
+    if registered:
+        findings.append(Finding(
+            id="lookalike-domains",
+            title=f"{len(registered)} lookalike domain(s) are registered",
+            severity="low",
+            description=(
+                "Domains that closely resemble yours are registered and resolve. These are commonly "
+                "used for phishing and brand impersonation."
+            ),
+            recommendation="Monitor the closest variants, defensively register the riskiest, and watch for abuse.",
+            evidence={"domains": [r["domain"] for r in registered][:30]},
+        ))
+
+    reputation = checks.get("reputation", {})
+    if reputation.get("listed"):
+        findings.append(Finding(
+            id="domain-listed-malicious",
+            title="Domain is listed on a threat feed",
+            severity="high",
+            description=(
+                "This domain appears on "
+                f"{', '.join(reputation.get('sources') or ['a threat feed'])} as serving malware or phishing."
+            ),
+            recommendation="If unexpected, investigate for compromise and request delisting after cleanup.",
+            evidence=reputation,
+        ))
+
     return findings
 
 
