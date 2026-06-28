@@ -20,7 +20,7 @@ _HOMOGLYPHS = {
     "b": "6", "g": "9", "t": "7", "z": "2",
 }
 _SWAP_TLDS = ("com", "net", "org", "co", "io", "info", "biz", "online", "app", "xyz", "us", "site")
-MAX_CANDIDATES = 40
+MAX_CANDIDATES = 30
 
 
 def generate_permutations(domain: str) -> list[str]:
@@ -62,7 +62,7 @@ def detect_typosquats(
         records, _ = resolver(candidate, "A")
         return {"domain": candidate, "resolves": True} if records else None
 
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with ThreadPoolExecutor(max_workers=16) as pool:
         results = [r for r in pool.map(_probe, candidates) if r]
 
     return {

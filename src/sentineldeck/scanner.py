@@ -79,6 +79,10 @@ def scan_domain(
     # where direct port-53 DNS is blocked, the first failure trips its DoH
     # circuit breaker once and the remaining lookups skip straight to DoH.
     resolver = Resolver()
+    # Typosquatting makes ~30 bulk existence checks; a short timeout keeps the
+    # scan snappy where direct DNS is slow or blocked, at the cost of possibly
+    # missing a very slow-resolving lookalike.
+    typo_resolver = Resolver(timeout=2.0)
 
     # Every probe is independent and I/O-bound (DNS, HTTP, TLS, RDAP), so we run
     # them concurrently and the whole scan finishes close to the slowest one.
@@ -95,7 +99,7 @@ def scan_domain(
             "subdomains": pool.submit(discover_subdomains, domain, timeout, host_fetcher=fetch_hostsearch),
             "page": pool.submit(fetch_page, domain, timeout),
             "redirect_chain": pool.submit(trace_redirects, domain, timeout),
-            "typosquat": pool.submit(detect_typosquats, domain, resolver),
+            "typosquat": pool.submit(detect_typosquats, domain, typo_resolver),
             "reputation": pool.submit(check_reputation, domain),
             "archive": pool.submit(archive_history, domain),
             "tls_config": pool.submit(analyze_tls_config, domain),

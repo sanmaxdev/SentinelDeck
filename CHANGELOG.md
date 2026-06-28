@@ -12,9 +12,15 @@ to follow semantic versioning once it reaches 1.0.
   grid-divided layout, and 90-degree corners.
 - Added a dark / light mode toggle that remembers your choice.
 - Added a security-posture radar (TLS, email, DNS, headers, surface, trust) and a
-  dot-matrix server-location map with a coordinate pin.
+  server-location map drawn from continent outlines with a coordinate pin.
 - Made the active-scan toggle clearly labelled, and removed the per-finding
   checkboxes from the findings list.
+
+### Fixed
+
+- Sped up the scan: typosquatting now uses a short-timeout resolver for its bulk
+  lookups, and the certificate-transparency and archive lookups no longer retry
+  for as long, so a slow source cannot stall the whole scan.
 
 ## [1.1.0] - 2026-06-29
 

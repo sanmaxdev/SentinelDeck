@@ -38,7 +38,7 @@ HostFetcher = Callable[[str, int], "list[str] | None"]
 
 
 def _fetch_json(url: str, timeout: int, attempts: int = 1) -> list[dict[str, Any]] | None:
-    deadline = max(timeout, 15)
+    deadline = max(timeout, 12)
     for _ in range(attempts):
         request = urllib.request.Request(
             url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"}
@@ -56,7 +56,7 @@ def _default_fetch(domain: str, timeout: int) -> list[dict[str, Any]] | None:
     # crt.sh is the richer source but frequently returns 502s, so fall back to
     # CertSpotter (a different CT aggregator) when it is unavailable.
     quoted = urllib.parse.quote(domain)
-    entries = _fetch_json(CRTSH_URL.format(domain=quoted), timeout, attempts=2)
+    entries = _fetch_json(CRTSH_URL.format(domain=quoted), timeout, attempts=1)
     if entries is None:
         entries = _fetch_json(CERTSPOTTER_URL.format(domain=quoted), timeout)
     return entries

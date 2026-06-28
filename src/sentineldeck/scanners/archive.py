@@ -15,7 +15,7 @@ CDX_URL = (
 )
 
 
-def _wayback_fetch(domain: str, timeout: int = 20) -> list | None:
+def _wayback_fetch(domain: str, timeout: int = 12) -> list | None:
     url = CDX_URL.format(domain=urllib.parse.quote(domain))
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:

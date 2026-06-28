@@ -25,7 +25,7 @@ FILTERS = [
 SINKHOLES = {"0.0.0.0", "::", "146.112.61.104", "146.112.61.106", "146.112.61.108"}  # nosec B104
 
 
-def _doh_query(endpoint: str, domain: str, timeout: int = 8) -> dict | None:
+def _doh_query(endpoint: str, domain: str, timeout: int = 6) -> dict | None:
     url = endpoint + "?" + urllib.parse.urlencode({"name": domain, "type": "A"})
     request = urllib.request.Request(
         url, headers={"Accept": "application/dns-json", "User-Agent": USER_AGENT}
