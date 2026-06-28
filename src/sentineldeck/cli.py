@@ -46,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         help="Accept listed finding ids (one per line, globs allowed); they are kept out of the score.",
     )
+    scan.add_argument(
+        "--active",
+        action="store_true",
+        help="Also run an active TCP port scan. Off by default; only use on hosts you are authorised to scan.",
+    )
 
     report = subparsers.add_parser("report", help="Render a saved JSON scan report.")
     report.add_argument("source", help="Path to a SentinelDeck JSON report.")
@@ -179,6 +184,7 @@ def main(argv: list[str] | None = None) -> int:
                 timeout=args.timeout,
                 suppressions=suppressions,
                 progress=tracker.step if tracker else None,
+                active=args.active,
             )
         except ValueError as exc:
             print(f"error: {exc}", file=sys.stderr)

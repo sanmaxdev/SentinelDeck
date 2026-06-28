@@ -210,6 +210,29 @@ def build_findings(checks: dict) -> list[Finding]:
             evidence=reputation,
         ))
 
+    weak_protocols = checks.get("tls_config", {}).get("weak_protocols", [])
+    if weak_protocols:
+        findings.append(Finding(
+            id="weak-tls-protocol",
+            title="Outdated TLS protocols are supported",
+            severity="medium",
+            description=f"The server still accepts {', '.join(weak_protocols)}, which are deprecated and insecure.",
+            recommendation="Disable TLS 1.0 and TLS 1.1; serve only TLS 1.2 and TLS 1.3.",
+            evidence={"weak_protocols": weak_protocols},
+        ))
+
+    risky_ports = [p for p in checks.get("ports", {}).get("open", []) if p.get("risky")]
+    if risky_ports:
+        listed = ", ".join(f"{p['port']}/{p['service']}" for p in risky_ports)
+        findings.append(Finding(
+            id="exposed-risky-ports",
+            title=f"{len(risky_ports)} risky port(s) exposed to the internet",
+            severity="medium",
+            description=f"Ports that usually should not be public are open: {listed}.",
+            recommendation="Firewall these ports or bind the services to localhost / a private network.",
+            evidence={"ports": risky_ports},
+        ))
+
     return findings
 
 

@@ -23,10 +23,12 @@ from sentineldeck.scanners.http_headers import (
     trace_redirects,
 )
 from sentineldeck.scanners.ip_intel import analyze_ip_intel
+from sentineldeck.scanners.ports import scan_ports
 from sentineldeck.scanners.reputation import check_reputation
 from sentineldeck.scanners.subdomains import discover_subdomains, fetch_hostsearch
 from sentineldeck.scanners.takeover import detect_takeovers
 from sentineldeck.scanners.tls import inspect_tls
+from sentineldeck.scanners.tls_config import analyze_tls_config
 from sentineldeck.scanners.typosquat import detect_typosquats
 from sentineldeck.scanners.web_content import analyze_web_content
 from sentineldeck.suppressions import apply_suppressions
@@ -49,6 +51,8 @@ STAGE_LABELS = {
     "typosquat": "Lookalike domains (typosquatting)",
     "reputation": "Threat reputation",
     "archive": "Archive history (Wayback)",
+    "tls_config": "TLS configuration",
+    "ports": "Open ports (active)",
 }
 
 
@@ -57,6 +61,7 @@ def scan_domain(
     timeout: int = DEFAULT_TIMEOUT,
     suppressions: list[str] | None = None,
     progress: Callable[[str], None] | None = None,
+    active: bool = False,
 ) -> ScanReport:
     domain = normalize_domain(target)
     report = ScanReport.empty(domain)
@@ -91,7 +96,10 @@ def scan_domain(
             "typosquat": pool.submit(detect_typosquats, domain, resolver),
             "reputation": pool.submit(check_reputation, domain),
             "archive": pool.submit(archive_history, domain),
+            "tls_config": pool.submit(analyze_tls_config, domain),
         }
+        if active:
+            futures["ports"] = pool.submit(scan_ports, domain)
         name_by_future = {future: name for name, future in futures.items()}
         results: dict = {}
         # Report each surface as it finishes, so the user sees live progress.
@@ -156,6 +164,8 @@ def scan_domain(
         "typosquatting": results["typosquat"],
         "reputation": results["reputation"],
         "archive": results["archive"],
+        "tls_config": results["tls_config"],
+        "ports": results.get("ports", {"status": "skipped", "open": []}),
     }
     report.findings = build_findings(report.checks)
     attach_remediations(report.findings, domain)

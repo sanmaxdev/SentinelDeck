@@ -299,7 +299,7 @@ _CHECK_SURFACES = [
     ("HTTP", ["HTTPS reachability", "HTTP to HTTPS redirect", "Security headers + value quality",
               "CORS policy", "Clickjacking / framing", "Cookie flags + SameSite", "security.txt"]),
     ("TLS", ["Trust + failure reason", "Expiry", "Protocol version", "Key strength",
-             "Hostname match"]),
+             "Hostname match", "Protocol enumeration + Mozilla config grade", "Open ports (--active)"]),
     ("Attack surface", ["Certificate-transparency + passive-DNS subdomains",
                         "Sensitive subdomain labels", "Subdomain takeover"]),
     ("Recon", ["Technology fingerprint (CMS, framework, server, CDN)",

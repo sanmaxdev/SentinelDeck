@@ -392,12 +392,35 @@ def _malicious_listing(finding: Finding, target: str) -> Fix:
     )
 
 
+def _weak_tls(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Disable legacy TLS protocols",
+        "# nginx\nssl_protocols TLSv1.2 TLSv1.3;\n\n"
+        "# apache\nSSLProtocol -all +TLSv1.2 +TLSv1.3",
+        "config",
+        "https://ssl-config.mozilla.org/",
+    )
+
+
+def _risky_ports(finding: Finding, target: str) -> Fix:
+    ports = (finding.evidence or {}).get("ports", [])
+    listed = ", ".join(str(p.get("port")) for p in ports) or "the exposed ports"
+    return _fix(
+        "Firewall the exposed ports",
+        f"# Block public access to {listed}; expose only what must be public (usually 80/443).\n"
+        "# ufw example\nufw default deny incoming\nufw allow 80/tcp\nufw allow 443/tcp\nufw enable",
+        "config",
+    )
+
+
 # --- Dispatch ---------------------------------------------------------------
 
 _BUILDERS: dict[str, Builder] = {
     "redirect-downgrades-to-http": _redirect_downgrade,
     "lookalike-domains": _lookalike,
     "domain-listed-malicious": _malicious_listing,
+    "weak-tls-protocol": _weak_tls,
+    "exposed-risky-ports": _risky_ports,
     "missing-strict-transport-security": _hsts,
     "missing-content-security-policy": _csp,
     "no-https-redirect": _no_https_redirect,

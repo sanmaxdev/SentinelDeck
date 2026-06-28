@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [0.9.0] - 2026-06-28
+
+### Added
+
+- TLS configuration depth: enumerates the protocol versions the server accepts
+  (TLS 1.0 through 1.3), assigns a Mozilla-style configuration grade, and raises
+  a finding when deprecated TLS 1.0/1.1 are still supported.
+- Optional active port scan (`scan --active`): connects to common TCP ports and
+  flags risky exposed services (databases, RDP, and the like). Off by default so
+  the standard scan stays passive and safe to run on any domain.
+- Dashboard cards for TLS configuration and open ports.
+
 ## [0.8.0] - 2026-06-28
 
 ### Added

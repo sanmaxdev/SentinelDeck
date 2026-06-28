@@ -167,7 +167,7 @@ own footprint.
 | --- | --- |
 | **DNS** | Resolution, CAA issuance control, DNSSEC, nameserver redundancy, IPv6 (AAAA) readiness, DANE/TLSA |
 | **HTTP** | HTTPS reachability, HTTP to HTTPS redirect, security headers + value quality, CORS policy, cookie flags + SameSite, Cross-Origin-Opener-Policy, security.txt, version disclosure |
-| **TLS** | Trust and failure reason (expired, self-signed, hostname mismatch, untrusted), expiry, protocol version, key strength, signature algorithm, hostname match |
+| **TLS** | Trust and failure reason (expired, self-signed, hostname mismatch, untrusted), expiry, protocol version, key strength, signature algorithm, hostname match, supported-protocol enumeration, and a Mozilla-style config grade |
 | **Email** | MX, SPF (policy, multiple records, 10-lookup limit), DMARC (policy, subdomain policy, enforcement coverage), DKIM (presence + key strength), MTA-STS (record + policy validation), TLS-RPT, BIMI |
 | **Domain** | Registrar, registration age, and expiry via RDAP |
 | **Subdomains** | Public subdomain discovery via certificate transparency (crt.sh, CertSpotter) and passive DNS (HackerTarget), sensitive-name flagging, and dangling-CNAME takeover detection |

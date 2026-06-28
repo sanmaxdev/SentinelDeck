@@ -43,6 +43,10 @@ def test_scan_domain_includes_email_security(monkeypatch):
     )
     monkeypatch.setattr("sentineldeck.scanner.check_reputation", lambda domain: {"status": "error", "listed": False})
     monkeypatch.setattr("sentineldeck.scanner.archive_history", lambda domain: {"status": "ok", "snapshots": 0})
+    monkeypatch.setattr(
+        "sentineldeck.scanner.analyze_tls_config",
+        lambda domain: {"status": "error", "weak_protocols": []},
+    )
 
     report = scan_domain("example.com")
 
@@ -84,6 +88,10 @@ def test_scan_domain_reports_progress(monkeypatch):
     )
     monkeypatch.setattr("sentineldeck.scanner.check_reputation", lambda domain: {"status": "ok", "listed": False})
     monkeypatch.setattr("sentineldeck.scanner.archive_history", lambda domain: {"status": "ok", "snapshots": 0})
+    monkeypatch.setattr(
+        "sentineldeck.scanner.analyze_tls_config",
+        lambda domain: {"status": "error", "weak_protocols": []},
+    )
 
     labels: list[str] = []
     scan_domain("example.com", progress=labels.append)

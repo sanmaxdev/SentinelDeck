@@ -65,9 +65,11 @@ function render(report) {
     cardStack(checks.technologies),
     cardReputation(checks.reputation),
     cardTLS(checks.tls),
+    cardTLSConfig(checks.tls_config),
     cardEmail(checks.email_security),
     cardDNS(checks.dns_hygiene, checks.dns),
     cardIP(checks.ip_intel),
+    cardPorts(checks.ports),
     cardSubdomains(checks.subdomains),
     cardTyposquat(checks.typosquatting),
     cardHeaders(checks.missing_security_headers, checks.header_issues),
@@ -225,6 +227,27 @@ function cardRedirects(rc) {
   return card("Redirect chain",
     row("Hops", esc(rc.count)) +
     (rc.downgrade ? row("Downgrade", "HTTPS&rarr;HTTP", "bad") : "") + hops);
+}
+
+function cardTLSConfig(t) {
+  if (!t || t.status !== "ok") return "";
+  const protos = t.protocols || {};
+  const rows = Object.keys(protos).map((k) => {
+    const weak = k === "TLSv1" || k === "TLSv1.1";
+    return `<div class="row"><span class="k">${esc(k)}</span>${
+      protos[k] === true ? `<span class="v ${weak ? "bad" : "ok"}">supported</span>`
+                         : `<span class="v muted">no</span>`}</div>`;
+  }).join("");
+  return card("TLS configuration",
+    (t.grade ? row("Config grade", esc(t.grade), t.grade === "old" ? "bad" : "ok") : "") + rows);
+}
+
+function cardPorts(p) {
+  if (!p || p.status !== "ok") return "";
+  const rows = (p.open || []).map((o) =>
+    row(`${esc(o.port)} ${esc(o.service)}`, o.risky ? "risky" : "open", o.risky ? "bad" : "ok")).join("");
+  return card("Open ports (active)",
+    row("Scanned", esc(p.scanned)) + row("Open", esc((p.open || []).length)) + rows);
 }
 
 function cardReputation(r) {
