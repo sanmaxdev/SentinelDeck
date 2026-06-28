@@ -1,6 +1,6 @@
 from sentineldeck.models import Finding
 from sentineldeck.remediation import attach_remediations, remediation_for
-from sentineldeck.risk.scoring import path_to_grade, quick_wins
+from sentineldeck.risk.scoring import build_findings, path_to_grade, quick_wins
 
 
 def f(id, severity="medium", evidence=None, confidence="confirmed"):
@@ -106,6 +106,13 @@ def test_remediation_for_phase3_findings():
         "example.com",
     )
     assert bucket is not None and "leaky" in bucket["snippet"]
+
+
+def test_redirect_downgrade_finding_and_fix():
+    findings = {f.id: f for f in build_findings({"redirect_chain": {"downgrade": True, "hops": []}})}
+    assert "redirect-downgrades-to-http" in findings
+    fix = remediation_for(findings["redirect-downgrades-to-http"], "example.com")
+    assert fix is not None and "https://example.com" in fix["snippet"]
 
 
 def test_remediation_unknown_finding_returns_none():

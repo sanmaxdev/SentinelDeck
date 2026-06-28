@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [0.7.0] - 2026-06-28
+
+### Added
+
+- IP intelligence: geolocation, ASN, and hosting provider for the resolved
+  address (a new dashboard card).
+- Full redirect chain: every hop from http:// to the final URL, and a finding
+  when the chain downgrades HTTPS to HTTP.
+- Web-content checks from the homepage: WAF/CDN fingerprinting, internal vs
+  external link analysis, Open Graph / Twitter social tags, robots.txt, and
+  sitemap.xml. New dashboard cards for each.
+
 ## [0.6.0] - 2026-06-28
 
 ### Added

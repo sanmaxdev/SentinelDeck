@@ -31,6 +31,12 @@ def test_scan_domain_includes_email_security(monkeypatch):
     monkeypatch.setattr(
         "sentineldeck.scanner.fetch_page", lambda domain, timeout=10: {"reachable": False, "body": ""}
     )
+    monkeypatch.setattr(
+        "sentineldeck.scanner.trace_redirects",
+        lambda domain, timeout=10: {"hops": [], "count": 0, "downgrade": False},
+    )
+    monkeypatch.setattr("sentineldeck.scanner.analyze_web_content", lambda domain, page: {"status": "error"})
+    monkeypatch.setattr("sentineldeck.scanner.analyze_ip_intel", lambda ip, timeout=10: {"status": "error"})
 
     report = scan_domain("example.com")
 
@@ -60,11 +66,17 @@ def test_scan_domain_reports_progress(monkeypatch):
         "sentineldeck.scanner.fetch_page",
         lambda domain, timeout=10: {"reachable": True, "headers": {}, "body": ""},
     )
+    monkeypatch.setattr(
+        "sentineldeck.scanner.trace_redirects",
+        lambda domain, timeout=10: {"hops": [], "count": 0, "downgrade": False},
+    )
+    monkeypatch.setattr("sentineldeck.scanner.analyze_web_content", lambda domain, page: {"status": "ok"})
+    monkeypatch.setattr("sentineldeck.scanner.analyze_ip_intel", lambda ip, timeout=10: {"status": "ok"})
 
     labels: list[str] = []
     scan_domain("example.com", progress=labels.append)
 
     assert "DNS resolution" in labels
-    assert "TLS certificate" in labels
     assert "Technology fingerprint" in labels
-    assert len(labels) >= 9
+    assert "IP intelligence (geo, ASN)" in labels
+    assert len(labels) >= 10

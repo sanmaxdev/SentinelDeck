@@ -19,10 +19,13 @@ from sentineldeck.scanners.http_headers import (
     evaluate_headers,
     fetch_headers,
     missing_security_headers,
+    trace_redirects,
 )
+from sentineldeck.scanners.ip_intel import analyze_ip_intel
 from sentineldeck.scanners.subdomains import discover_subdomains, fetch_hostsearch
 from sentineldeck.scanners.takeover import detect_takeovers
 from sentineldeck.scanners.tls import inspect_tls
+from sentineldeck.scanners.web_content import analyze_web_content
 from sentineldeck.suppressions import apply_suppressions
 
 DEFAULT_TIMEOUT = 10
@@ -39,6 +42,7 @@ STAGE_LABELS = {
     "domain_intel": "Domain registration (RDAP)",
     "subdomains": "Certificate-transparency subdomains",
     "page": "Technology fingerprint",
+    "redirect_chain": "Redirect chain",
 }
 
 
@@ -77,6 +81,7 @@ def scan_domain(
             "domain_intel": pool.submit(analyze_domain_intel, domain, timeout),
             "subdomains": pool.submit(discover_subdomains, domain, timeout, host_fetcher=fetch_hostsearch),
             "page": pool.submit(fetch_page, domain, timeout),
+            "redirect_chain": pool.submit(trace_redirects, domain, timeout),
         }
         name_by_future = {future: name for name, future in futures.items()}
         results: dict = {}
@@ -116,6 +121,13 @@ def scan_domain(
     if cloud.get("buckets"):
         _notify("Cloud storage exposure")
 
+    web_content = analyze_web_content(domain, page)
+    _notify("Web content (links, social, WAF, robots)")
+
+    addresses = results["dns"].get("addresses") or []
+    ip_intel = analyze_ip_intel(addresses[0] if addresses else None, timeout)
+    _notify("IP intelligence (geo, ASN)")
+
     report.checks = {
         "dns": results["dns"],
         "http": http,
@@ -129,6 +141,9 @@ def scan_domain(
         "takeover": takeover,
         "technologies": technologies,
         "cloud_assets": cloud,
+        "redirect_chain": results["redirect_chain"],
+        "web_content": web_content,
+        "ip_intel": ip_intel,
     }
     report.findings = build_findings(report.checks)
     attach_remediations(report.findings, domain)

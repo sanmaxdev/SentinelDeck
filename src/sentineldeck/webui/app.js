@@ -66,8 +66,11 @@ function render(report) {
     cardTLS(checks.tls),
     cardEmail(checks.email_security),
     cardDNS(checks.dns_hygiene, checks.dns),
+    cardIP(checks.ip_intel),
     cardSubdomains(checks.subdomains),
     cardHeaders(checks.missing_security_headers, checks.header_issues),
+    cardWebContent(checks.web_content),
+    cardRedirects(checks.redirect_chain),
     cardDomain(checks.domain_intel),
     cardCloud(checks.cloud_assets),
   ].filter(Boolean).join("");
@@ -199,4 +202,39 @@ function cardCloud(c) {
   const rows = c.buckets.map((b) =>
     row(`${esc(b.provider.toUpperCase())} ${esc(b.name)}`, esc(b.access), b.access === "public" ? "bad" : "ok")).join("");
   return card("Cloud storage", rows);
+}
+
+function cardIP(ip) {
+  if (!ip || ip.status !== "ok") return "";
+  const loc = [ip.city, ip.region, ip.country].filter(Boolean).join(", ");
+  return card("Server / IP intel",
+    row("IP", esc(ip.ip)) +
+    (loc ? row("Location", esc(loc)) : "") +
+    (ip.org ? row("Org", esc(ip.org)) : "") +
+    (ip.isp ? row("ISP", esc(ip.isp)) : "") +
+    (ip.asn ? row("ASN", esc(ip.asn)) : ""));
+}
+
+function cardRedirects(rc) {
+  if (!rc || !(rc.hops || []).length) return "";
+  const hops = rc.hops.map((h) =>
+    `<div class="row"><span class="k">${esc(h.status)}</span><span class="v muted">${esc(h.url)}</span></div>`).join("");
+  return card("Redirect chain",
+    row("Hops", esc(rc.count)) +
+    (rc.downgrade ? row("Downgrade", "HTTPS&rarr;HTTP", "bad") : "") + hops);
+}
+
+function cardWebContent(w) {
+  if (!w || w.status !== "ok") return "";
+  const waf = (w.waf || []).length
+    ? `<span class="v ok">${w.waf.map(esc).join(", ")}</span>`
+    : `<span class="v muted">none detected</span>`;
+  const links = w.links || {}, robots = w.robots || {}, sitemap = w.sitemap || {};
+  const social = Object.keys(w.social || {}).length;
+  return card("Web content",
+    `<div class="row"><span class="k">WAF / CDN</span>${waf}</div>` +
+    row("Links", `${esc(links.internal || 0)} internal / ${esc(links.external || 0)} external`) +
+    row("robots.txt", robots.present ? "yes" : "no", robots.present ? "ok" : "") +
+    row("sitemap.xml", sitemap.present ? `${esc(sitemap.urls)} urls` : "no", sitemap.present ? "ok" : "") +
+    row("Social tags", esc(social), social ? "ok" : ""));
 }

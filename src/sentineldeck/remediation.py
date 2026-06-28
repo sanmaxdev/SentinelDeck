@@ -359,9 +359,19 @@ def _cloud_bucket(finding: Finding, target: str) -> Fix:
     return _fix("Remove public access from the bucket", snippet, "config")
 
 
+def _redirect_downgrade(finding: Finding, target: str) -> Fix:
+    return _fix(
+        "Keep every redirect on HTTPS",
+        "# Redirect straight to the canonical HTTPS URL; never hop through http://\n"
+        f"# nginx\nreturn 301 https://{target}$request_uri;",
+        "config",
+    )
+
+
 # --- Dispatch ---------------------------------------------------------------
 
 _BUILDERS: dict[str, Builder] = {
+    "redirect-downgrades-to-http": _redirect_downgrade,
     "missing-strict-transport-security": _hsts,
     "missing-content-security-policy": _csp,
     "no-https-redirect": _no_https_redirect,

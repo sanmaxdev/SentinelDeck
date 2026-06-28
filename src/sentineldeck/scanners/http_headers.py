@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -84,6 +85,32 @@ def check_http_redirect(domain: str, timeout: int = 10) -> dict[str, Any]:
 
     redirects_to_https = location.lower().startswith("https://")
     return {"https_redirect": bool(redirects_to_https), "http_status": status}
+
+
+def trace_redirects(domain: str, timeout: int = 10, max_hops: int = 8) -> dict[str, Any]:
+    """Follow the redirect chain from http://domain and record each hop."""
+    opener = urllib.request.build_opener(_NoRedirect)
+    url = f"http://{domain}"
+    hops: list[dict[str, Any]] = []
+    downgrade = False
+    for _ in range(max_hops):
+        request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
+        try:
+            with opener.open(request, timeout=timeout) as response:
+                status, location = response.status, response.headers.get("location")
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+            location = exc.headers.get("location") if exc.headers else None
+        except Exception:  # noqa: BLE001 - stop tracing on any transport error
+            break
+        hops.append({"url": url, "status": status})
+        if not location or not (300 <= status < 400):
+            break
+        nxt = urllib.parse.urljoin(url, location)
+        if url.startswith("https://") and nxt.startswith("http://"):
+            downgrade = True
+        url = nxt
+    return {"hops": hops, "final_url": url, "count": len(hops), "downgrade": downgrade}
 
 
 def missing_security_headers(headers: dict[str, str]) -> dict[str, str]:

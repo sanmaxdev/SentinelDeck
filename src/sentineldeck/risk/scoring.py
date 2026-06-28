@@ -172,6 +172,16 @@ def build_findings(checks: dict) -> list[Finding]:
     if cloud_assets:
         findings.extend(_cloud_findings(cloud_assets))
 
+    if checks.get("redirect_chain", {}).get("downgrade"):
+        findings.append(Finding(
+            id="redirect-downgrades-to-http",
+            title="Redirect chain downgrades HTTPS to HTTP",
+            severity="medium",
+            description="A redirect steps down from HTTPS to plain HTTP, exposing the request to interception.",
+            recommendation="Make every redirect target use https:// so the connection is never downgraded.",
+            evidence=checks.get("redirect_chain", {}),
+        ))
+
     return findings
 
 
