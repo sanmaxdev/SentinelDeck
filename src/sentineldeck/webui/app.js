@@ -5,15 +5,18 @@ const form = $("#scan-form"), input = $("#domain"), btn = $("#scan-btn");
 const intro = $("#intro"), prog = $("#progress"), errBox = $("#error"), results = $("#results");
 const SEV = { critical: "var(--crit)", high: "var(--high)", medium: "var(--medium)", low: "var(--low)", info: "var(--info)" };
 const SEV_ORDER = ["critical", "high", "medium", "low", "info"];
-const POINTS = { critical: 40, high: 25, medium: 12, low: 5, info: 0 };
-const gradeFromScore = (s) => (s >= 80 ? "F" : s >= 60 ? "D" : s >= 40 ? "C" : s >= 20 ? "B" : "A");
 let source = null;
-let SIM = [];
 
-$("#foot-version").textContent = "SentinelDeck dashboard";
+/* theme */
+document.documentElement.setAttribute("data-theme", localStorage.getItem("sd-theme") || "dark");
+$("#theme-btn").addEventListener("click", () => {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("sd-theme", next); } catch (_) {}
+});
+
 document.querySelectorAll(".chip").forEach((c) =>
   c.addEventListener("click", () => { input.value = c.dataset.domain; form.requestSubmit(); }));
-
 form.addEventListener("submit", (e) => {
   e.preventDefault();
   const domain = input.value.trim();
@@ -31,7 +34,7 @@ function startScan(domain) {
   $("#progress-domain").textContent = domain;
   $("#progress-steps").innerHTML = "";
   show(prog);
-  btn.disabled = true; btn.textContent = "Scanning…";
+  btn.disabled = true; btn.textContent = "SCANNING…";
 
   const active = document.getElementById("active-scan").checked ? "&active=1" : "";
   source = new EventSource(`/api/scan?domain=${encodeURIComponent(domain)}${active}`);
@@ -40,25 +43,21 @@ function startScan(domain) {
     li.textContent = JSON.parse(ev.data).label;
     $("#progress-steps").appendChild(li);
   });
-  source.addEventListener("done", (ev) => {
-    source.close(); source = null;
-    render(JSON.parse(ev.data));
-    finish();
-  });
+  source.addEventListener("done", (ev) => { source.close(); source = null; render(JSON.parse(ev.data)); finish(); });
   source.addEventListener("failed", (ev) => {
     source.close(); source = null;
-    let msg = "Scan failed.";
+    let msg = "SCAN FAILED.";
     try { msg = JSON.parse(ev.data).message; } catch (_) {}
     errBox.textContent = msg; show(errBox); finish();
   });
   source.addEventListener("error", () => {
-    if (!source) return;            // already finished/closed cleanly
+    if (!source) return;
     source.close(); source = null;
-    errBox.textContent = "Connection to the scanner was lost."; show(errBox); finish();
+    errBox.textContent = "CONNECTION TO THE SCANNER WAS LOST."; show(errBox); finish();
   });
 }
 
-function finish() { hide(prog); btn.disabled = false; btn.textContent = "Scan"; }
+function finish() { hide(prog); btn.disabled = false; btn.textContent = "SCAN"; }
 
 function render(report) {
   const checks = report.checks || {};
@@ -103,39 +102,69 @@ function render(report) {
 
 function renderHero(report, findings) {
   const g = (report.grade || "?").toUpperCase();
-  const color = `var(--${g})`;
   const counts = {};
   for (const f of findings) counts[f.severity] = (counts[f.severity] || 0) + 1;
   const pills = SEV_ORDER.filter((s) => counts[s]).map((s) =>
-    `<span class="sev-pill"><span class="sev-dot" style="background:${SEV[s]}"></span>${counts[s]} ${s}</span>`).join("");
-  $("#hero").innerHTML = `
-    <div class="grade" style="color:${color}">${esc(g)}</div>
-    <div class="hero-meta">
-      <h2>${esc(report.target)}</h2>
-      <div class="score">Risk ${esc(report.risk_score)}/100 &middot; ${findings.length} findings &middot; grade ${esc(g)}</div>
-      <div class="sev-row">${pills || '<span class="muted">No scored issues. Clean posture.</span>'}</div>
-    </div>`;
+    `<span class="sev-pill"><span class="sev-dot" style="background:${SEV[s]}"></span>${counts[s]} ${s.toUpperCase()}</span>`).join("");
+  $("#hero").innerHTML =
+    `<div class="grade-box"><div class="grade-letter" style="color:var(--${g})">${esc(g)}</div><div class="grade-cap">GRADE</div></div>` +
+    `<div class="hero-meta">
+       <div class="hero-target">${esc(report.target)}</div>
+       <div class="hero-score">RISK ${esc(report.risk_score)}/100 // ${findings.length} FINDINGS</div>
+       <div class="hero-sev">${pills || '<span class="muted">NO SCORED ISSUES // CLEAN POSTURE</span>'}</div>
+     </div>` +
+    `<div class="hero-radar">${radarSVG(computeDimensions(report.checks || {}))}</div>`;
+}
+
+/* --- posture radar (unique telemetry view) ------------------------------- */
+function pct(items) {
+  let s = 0;
+  for (const [cond, w] of items) if (cond) s += w;
+  return Math.min(100, s);
+}
+
+function computeDimensions(c) {
+  const tls = c.tls || {}, tc = c.tls_config || {}, em = c.email_security || {}, dh = c.dns_hygiene || {};
+  const missing = c.missing_security_headers || {};
+  const rep = c.reputation || {}, bl = c.blocklists || {}, tk = c.takeover || {}, cloud = c.cloud_assets || {};
+  const dmarcEnforced = ["quarantine", "reject"].includes((em.dmarc || {}).policy);
+  const publicBuckets = (cloud.buckets || []).filter((b) => b.access === "public").length;
+  return [
+    { label: "TLS", score: pct([[tls.valid, 40], [tc.status === "ok" && !(tc.weak_protocols || []).length, 30], [tls.forward_secrecy, 30]]) },
+    { label: "EMAIL", score: pct([[(em.spf || {}).present, 25], [dmarcEnforced, 35], [(em.dkim || {}).present, 20], [(em.mta_sts || {}).present, 20]]) },
+    { label: "DNS", score: pct([[(dh.dnssec || {}).enabled, 40], [(dh.caa || {}).present, 30], [(dh.ipv6 || {}).present, 15], [((dh.ns || {}).count || 0) >= 2, 15]]) },
+    { label: "HEADERS", score: Math.round(Math.max(0, 6 - Object.keys(missing).length) / 6 * 100) },
+    { label: "SURFACE", score: Math.max(0, 100 - ((tk.candidates || []).length * 50) - (publicBuckets * 40)) },
+    { label: "TRUST", score: (rep.listed || (bl.blocked_security || []).length) ? 15 : 100 },
+  ];
+}
+
+function radarSVG(dims) {
+  const size = 200, cx = size / 2, cy = size / 2, R = 70, n = dims.length;
+  const ang = (i) => (Math.PI * 2 * i / n) - Math.PI / 2;
+  const pt = (i, r) => [cx + Math.cos(ang(i)) * r, cy + Math.sin(ang(i)) * r];
+  const ring = (f) => dims.map((_, i) => pt(i, R * f).map((v) => v.toFixed(1)).join(",")).join(" ");
+  const grid = [0.25, 0.5, 0.75, 1].map((f) => `<polygon points="${ring(f)}" class="rg"/>`).join("");
+  const axes = dims.map((_, i) => { const [x, y] = pt(i, R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="rg"/>`; }).join("");
+  const data = dims.map((d, i) => pt(i, R * (d.score / 100)).map((v) => v.toFixed(1)).join(",")).join(" ");
+  const dots = dims.map((d, i) => { const [x, y] = pt(i, R * (d.score / 100)); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2" class="rdot"/>`; }).join("");
+  const labels = dims.map((d, i) => { const [x, y] = pt(i, R + 14); return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" class="rl" text-anchor="middle" dominant-baseline="middle">${esc(d.label)}</text>`; }).join("");
+  return `<svg viewBox="0 0 ${size} ${size}" class="radar" style="max-width:210px">${grid}${axes}<polygon points="${data}" class="rd"/>${dots}${labels}</svg>`;
 }
 
 function renderFindings(findings) {
   const scored = findings.slice().sort((a, b) => SEV_ORDER.indexOf(a.severity) - SEV_ORDER.indexOf(b.severity));
-  SIM = scored.map((f) => ({
-    f, fixed: false, pts: f.confidence === "indeterminate" ? 0 : (POINTS[f.severity] || 0),
-  }));
-
-  const cards = SIM.map((item, i) => {
-    const f = item.f, color = SEV[f.severity] || "var(--info)";
+  $("#findings").innerHTML = scored.map((f) => {
+    const color = SEV[f.severity] || "var(--info)";
     const fix = f.remediation ? `
-      <div class="fix-label">Fix${f.remediation.kind ? " &middot; " + esc(f.remediation.kind) : ""}</div>
+      <div class="fix-label">FIX${f.remediation.kind ? " // " + esc(f.remediation.kind) : ""}</div>
       <pre>${esc(f.remediation.snippet)}</pre>` : "";
-    const toggle = item.pts > 0
-      ? `<label class="fixtoggle"><input type="checkbox" data-i="${i}"> mark fixed</label>` : "";
     return `
       <div class="finding" style="border-left-color:${color}">
         <div class="finding-head">
-          <span class="sev-tag" style="background:${color};color:#0a0a0f">${esc(f.severity)}</span>
+          <span class="sev-tag" style="background:${color}">${esc(f.severity)}</span>
           <span class="finding-title" onclick="this.closest('.finding').querySelector('.finding-body').classList.toggle('hidden')">${esc(f.title)}</span>
-          ${toggle}
+          <span class="finding-id">${esc(f.id)}</span>
         </div>
         <div class="finding-body hidden">
           <div>${esc(f.description)}</div>
@@ -143,26 +172,7 @@ function renderFindings(findings) {
           ${fix}
         </div>
       </div>`;
-  }).join("");
-
-  $("#findings").innerHTML = `<div class="sim" id="sim"></div>` + (cards || '<div class="muted">No findings.</div>');
-  $("#findings").querySelectorAll(".fixtoggle input").forEach((cb) =>
-    cb.addEventListener("change", () => { SIM[+cb.dataset.i].fixed = cb.checked; updateSim(); }));
-  updateSim();
-}
-
-function updateSim() {
-  const projected = Math.min(100, SIM.filter((x) => !x.fixed).reduce((s, x) => s + x.pts, 0));
-  const applied = SIM.filter((x) => x.fixed && x.pts > 0).length;
-  const g = gradeFromScore(projected);
-  const sim = document.getElementById("sim");
-  if (!sim) return;
-  if (!SIM.some((x) => x.pts > 0)) { sim.style.display = "none"; return; }
-  sim.innerHTML =
-    `<span class="sim-label">Remediation simulator</span>` +
-    `<span class="sim-grade" style="color:var(--${g})">${g}</span>` +
-    `<span class="sim-score">projected risk ${projected}/100</span>` +
-    `<span class="muted">${applied ? applied + " fix" + (applied === 1 ? "" : "es") + " applied" : "tick findings to watch the grade improve"}</span>`;
+  }).join("") || '<div class="muted">NO FINDINGS.</div>';
 }
 
 /* --- cards --------------------------------------------------------------- */
@@ -173,10 +183,8 @@ const flag = (label, ok) => `<div class="row"><span class="k">${esc(label)}</spa
 
 function cardStack(t) {
   if (!t || t.status !== "ok") return "";
-  const tags = (t.detected || []).map((d) =>
-    `<span class="tag">${esc(d.name)}${d.version ? " " + esc(d.version) : ""}</span>`).join("");
-  const vulns = (t.vulnerable_js || []).map((v) =>
-    `<span class="tag" style="border-color:var(--high);color:var(--high)">${esc(v.library)} ${esc(v.version)}</span>`).join("");
+  const tags = (t.detected || []).map((d) => `<span class="tag">${esc(d.name)}${d.version ? " " + esc(d.version) : ""}</span>`).join("");
+  const vulns = (t.vulnerable_js || []).map((v) => `<span class="tag" style="border-color:var(--high);color:var(--high)">${esc(v.library)} ${esc(v.version)}</span>`).join("");
   if (!tags && !vulns) return card("Technology", '<div class="muted">No technologies fingerprinted.</div>');
   return card("Technology stack", `<div class="tags">${tags}${vulns}</div>`);
 }
@@ -193,9 +201,27 @@ function cardTLS(tls) {
     (tls.issuer_org ? row("Issuer", esc(tls.issuer_org)) : "") +
     (tls.serial ? row("Serial", esc(tls.serial.slice(0, 20)) + (tls.serial.length > 20 ? "…" : "")) : "") +
     (tls.fingerprint_sha256 ? row("SHA-256", esc(tls.fingerprint_sha256.slice(0, 20)) + "…") : "") +
-    (tls.extended_key_usage && tls.extended_key_usage.length
-      ? row("Key usage", esc(tls.extended_key_usage.join(", "))) : "") +
+    (tls.extended_key_usage && tls.extended_key_usage.length ? row("Key usage", esc(tls.extended_key_usage.join(", "))) : "") +
     flag("Hostname match", tls.hostname_match));
+}
+
+function cardTLSConn(tls) {
+  if (!tls || !tls.reachable || !tls.cipher_suite) return "";
+  return card("TLS connection",
+    row("Cipher suite", esc(tls.cipher_suite)) +
+    (tls.cipher_bits ? row("Strength", esc(tls.cipher_bits) + "-bit") : "") +
+    (tls.alpn ? row("ALPN", esc(tls.alpn)) : "") +
+    flag("Forward secrecy", tls.forward_secrecy));
+}
+
+function cardTLSConfig(t) {
+  if (!t || t.status !== "ok") return "";
+  const protos = t.protocols || {};
+  const rows = Object.keys(protos).map((k) => {
+    const weak = k === "TLSv1" || k === "TLSv1.1";
+    return `<div class="row"><span class="k">${esc(k)}</span>${protos[k] === true ? `<span class="v ${weak ? "bad" : "ok"}">supported</span>` : `<span class="v muted">no</span>`}</div>`;
+  }).join("");
+  return card("TLS configuration", (t.grade ? row("Config grade", esc(t.grade), t.grade === "old" ? "bad" : "ok") : "") + rows);
 }
 
 function cardEmail(e) {
@@ -213,48 +239,22 @@ function cardEmail(e) {
 
 function cardDNS(h, dns) {
   if (!h) return "";
-  return card("DNS",
+  return card("DNS hygiene",
     (dns && dns.addresses ? row("A records", esc(dns.addresses.length)) : "") +
     flag("CAA", h.caa && h.caa.present) + flag("DNSSEC", h.dnssec && h.dnssec.enabled) +
     (h.ns ? row("Nameservers", esc(h.ns.count), h.ns.count < 2 ? "warn" : "") : "") +
     flag("IPv6 (AAAA)", h.ipv6 && h.ipv6.present) + flag("DANE/TLSA", h.dane && h.dane.present));
 }
 
-function cardSubdomains(s) {
-  if (!s || s.status !== "ok") return "";
-  const hosts = (s.subdomains || []).slice(0, 12).map((h) =>
-    `<span class="tag"${(s.sensitive || []).includes(h) ? ' style="border-color:var(--medium);color:var(--medium)"' : ""}>${esc(h)}</span>`).join("");
-  return card("Subdomains",
-    row("Discovered", esc(s.count)) +
-    row("Sensitive", esc((s.sensitive || []).length), (s.sensitive || []).length ? "warn" : "") +
-    `<div class="row"><span class="k">Source</span><span class="v muted">${esc(s.source)}</span></div>` +
-    (hosts ? `<div class="tags" style="margin-top:10px">${hosts}</div>` : ""));
-}
-
-function cardHeaders(missing, issues) {
-  if (!missing && !issues) return "";
-  const miss = Object.keys(missing || {});
-  const tags = miss.map((h) => `<span class="tag" style="border-color:var(--medium);color:var(--medium)">${esc(h)}</span>`).join("");
-  return card("HTTP security headers",
-    row("Missing", esc(miss.length), miss.length ? "warn" : "ok") +
-    row("Misconfigured", esc((issues || []).length), (issues || []).length ? "warn" : "ok") +
-    (tags ? `<div class="tags" style="margin-top:10px">${tags}</div>` : ""));
-}
-
-function cardDomain(d) {
-  if (!d || d.status !== "ok") return "";
-  const years = d.age_days != null ? (d.age_days / 365).toFixed(1) + " yrs" : "?";
-  return card("Domain (RDAP)",
-    (d.registrar ? row("Registrar", esc(d.registrar)) : "") +
-    row("Age", years) +
-    (d.expires_in_days != null ? row("Expires in", esc(d.expires_in_days) + " days", d.expires_in_days < 30 ? "bad" : "") : ""));
-}
-
-function cardCloud(c) {
-  if (!c || !(c.buckets || []).length) return "";
-  const rows = c.buckets.map((b) =>
-    row(`${esc(b.provider.toUpperCase())} ${esc(b.name)}`, esc(b.access), b.access === "public" ? "bad" : "ok")).join("");
-  return card("Cloud storage", rows);
+function cardDNSRecords(d) {
+  if (!d) return "";
+  const block = (label, list) => {
+    if (!list || !list.length) return "";
+    const rows = list.slice(0, 8).map((r) => `<div class="dns-rec">${esc(r)}</div>`).join("");
+    return `<div class="dns-group"><div class="dns-type">${label}</div>${rows}</div>`;
+  };
+  const body = ["A", "AAAA", "MX", "NS", "SOA", "TXT", "CAA"].map((t) => block(t, d[t])).join("");
+  return body ? card("DNS records", body) : "";
 }
 
 function cardIP(ip) {
@@ -269,24 +269,36 @@ function cardIP(ip) {
     (ip.asn ? row("ASN", esc(ip.asn)) : ""));
 }
 
-function cardTLSConn(tls) {
-  if (!tls || !tls.reachable || !tls.cipher_suite) return "";
-  return card("TLS connection",
-    row("Cipher suite", esc(tls.cipher_suite)) +
-    (tls.cipher_bits ? row("Strength", esc(tls.cipher_bits) + "-bit") : "") +
-    (tls.alpn ? row("ALPN", esc(tls.alpn)) : "") +
-    flag("Forward secrecy", tls.forward_secrecy));
-}
+const LAND = [
+  [-168, -52, 48, 72], [-128, -72, 30, 50], [-118, -83, 14, 30], [-92, -60, 8, 16],
+  [-58, -20, 60, 82], [-80, -46, -5, 12], [-75, -40, -35, -5], [-73, -53, -55, -35],
+  [-12, 32, 36, 60], [4, 30, 58, 71], [-18, 30, 8, 36], [8, 44, -12, 18], [12, 40, -35, -12],
+  [28, 60, 40, 68], [55, 110,48, 73], [60, 90, 8, 35], [95, 135, 20, 52], [95, 142, -10, 22],
+  [113, 154, -39, -11], [166, 179, -47, -34], [35, 60, 30, 42],
+];
 
-function cardDNSRecords(d) {
-  if (!d) return "";
-  const block = (label, list) => {
-    if (!list || !list.length) return "";
-    const rows = list.slice(0, 8).map((r) => `<div class="dns-rec">${esc(r)}</div>`).join("");
-    return `<div class="dns-group"><div class="dns-type">${label}</div>${rows}</div>`;
-  };
-  const body = ["A", "AAAA", "MX", "NS", "SOA", "TXT", "CAA"].map((t) => block(t, d[t])).join("");
-  return body ? card("DNS records", body) : "";
+function cardMap(ip) {
+  if (!ip || ip.status !== "ok" || ip.lat == null || ip.lon == null) return "";
+  const W = 300, H = 150, COLS = 60, ROWS = 28, dx = W / COLS, dy = H / ROWS;
+  let dots = "";
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const lon = -180 + (c / COLS) * 360, lat = 90 - (r / ROWS) * 180;
+      if (LAND.some((b) => lon >= b[0] && lon <= b[1] && lat >= b[2] && lat <= b[3])) {
+        dots += `<rect x="${(c * dx).toFixed(1)}" y="${(r * dy).toFixed(1)}" width="1.7" height="1.7" class="md"/>`;
+      }
+    }
+  }
+  const px = ((Number(ip.lon) + 180) / 360) * W, py = ((90 - Number(ip.lat)) / 180) * H;
+  const loc = [ip.city, ip.country].filter(Boolean).join(", ");
+  return card("Server location", `
+    <svg viewBox="0 0 ${W} ${H}" class="map" xmlns="http://www.w3.org/2000/svg">${dots}
+      <line x1="${px.toFixed(1)}" y1="0" x2="${px.toFixed(1)}" y2="${H}" class="mx"/>
+      <line x1="0" y1="${py.toFixed(1)}" x2="${W}" y2="${py.toFixed(1)}" class="mx"/>
+      <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="6" class="mpc"/>
+      <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="2.5" class="mp"/>
+    </svg>
+    <div class="muted" style="margin-top:8px">${esc(loc)} // ${esc(ip.lat)}, ${esc(ip.lon)}</div>`);
 }
 
 function cardServerStatus(http) {
@@ -300,6 +312,43 @@ function cardServerStatus(http) {
 function cardHostNames(ip) {
   if (!ip || !(ip.hostnames || []).length) return "";
   return card("Host names", ip.hostnames.map((h) => row("PTR", esc(h))).join(""));
+}
+
+function cardPorts(p) {
+  if (!p || p.status !== "ok") return "";
+  const rows = (p.open || []).map((o) => row(`${esc(o.port)} ${esc(o.service)}`, o.risky ? "risky" : "open", o.risky ? "bad" : "ok")).join("");
+  return card("Open ports (active)", row("Scanned", esc(p.scanned)) + row("Open", esc((p.open || []).length)) + rows);
+}
+
+function cardSubdomains(s) {
+  if (!s || s.status !== "ok") return "";
+  const hosts = (s.subdomains || []).slice(0, 12).map((h) =>
+    `<span class="tag"${(s.sensitive || []).includes(h) ? ' style="border-color:var(--medium);color:var(--medium)"' : ""}>${esc(h)}</span>`).join("");
+  return card("Subdomains",
+    row("Discovered", esc(s.count)) +
+    row("Sensitive", esc((s.sensitive || []).length), (s.sensitive || []).length ? "warn" : "") +
+    `<div class="row"><span class="k">Source</span><span class="v muted">${esc(s.source)}</span></div>` +
+    (hosts ? `<div class="tags" style="margin-top:10px">${hosts}</div>` : ""));
+}
+
+function cardTyposquat(t) {
+  if (!t || t.status !== "ok") return "";
+  const reg = t.registered || [];
+  const tags = reg.slice(0, 16).map((r) => `<span class="tag" style="border-color:var(--medium);color:var(--medium)">${esc(r.domain)}</span>`).join("");
+  return card("Lookalike domains",
+    row("Variants checked", esc(t.checked)) +
+    row("Registered", esc(reg.length), reg.length ? "warn" : "ok") +
+    (tags ? `<div class="tags" style="margin-top:10px">${tags}</div>` : ""));
+}
+
+function cardHeaders(missing, issues) {
+  if (!missing && !issues) return "";
+  const miss = Object.keys(missing || {});
+  const tags = miss.map((h) => `<span class="tag" style="border-color:var(--medium);color:var(--medium)">${esc(h)}</span>`).join("");
+  return card("HTTP security headers",
+    row("Missing", esc(miss.length), miss.length ? "warn" : "ok") +
+    row("Misconfigured", esc((issues || []).length), (issues || []).length ? "warn" : "ok") +
+    (tags ? `<div class="tags" style="margin-top:10px">${tags}</div>` : ""));
 }
 
 function cardHeadersRaw(http) {
@@ -326,15 +375,12 @@ function cardFirewall(w) {
   if (!w || w.status !== "ok") return "";
   const waf = w.waf || [];
   return card("Firewall / WAF",
-    `<div class="row"><span class="k">Detected</span>${waf.length
-      ? `<span class="v ok">${waf.map(esc).join(", ")}</span>`
-      : `<span class="v muted">none detected</span>`}</div>`);
+    `<div class="row"><span class="k">Detected</span>${waf.length ? `<span class="v ok">${waf.map(esc).join(", ")}</span>` : `<span class="v muted">none detected</span>`}</div>`);
 }
 
 function cardSocial(w) {
   const tags = (w && w.social) || {};
-  const keys = Object.keys(tags);
-  if (!keys.length) return "";
+  if (!Object.keys(tags).length) return "";
   const img = tags["og:image"] || tags["twitter:image"];
   const rows = ["og:title", "og:description", "twitter:card"].filter((k) => tags[k])
     .map((k) => row(k, esc(String(tags[k]).slice(0, 50)))).join("");
@@ -347,8 +393,7 @@ function cardRobots(w) {
   if (!robots.present) return "";
   const dis = (robots.disallows || []).slice(0, 10).map((p) => `<div class="dns-rec">Disallow ${esc(p)}</div>`).join("");
   return card("Crawl rules (robots.txt)",
-    row("Sitemaps", esc((robots.sitemaps || []).length)) +
-    row("Disallow rules", esc(robots.disallow_count)) + dis);
+    row("Sitemaps", esc((robots.sitemaps || []).length)) + row("Disallow rules", esc(robots.disallow_count)) + dis);
 }
 
 function cardPages(w) {
@@ -361,11 +406,9 @@ function cardPages(w) {
 function cardLinks(w) {
   const links = (w && w.links) || {};
   if (links.internal == null) return "";
-  const ext = (links.external_domains || []).slice(0, 12)
-    .map((d) => `<span class="tag">${esc(d)}</span>`).join("");
+  const ext = (links.external_domains || []).slice(0, 12).map((d) => `<span class="tag">${esc(d)}</span>`).join("");
   return card("Linked pages",
-    row("Internal links", esc(links.internal)) +
-    row("External domains", esc(links.external)) +
+    row("Internal links", esc(links.internal)) + row("External domains", esc(links.external)) +
     (ext ? `<div class="tags" style="margin-top:10px">${ext}</div>` : ""));
 }
 
@@ -373,124 +416,45 @@ function cardSecurityTxt(http) {
   const st = http && http.security_txt;
   if (!st) return "";
   return card("security.txt",
-    `<div class="row"><span class="k">Present</span>${st.present
-      ? `<span class="v ok">yes</span>` : `<span class="v warn">no</span>`}</div>`);
+    `<div class="row"><span class="k">Present</span>${st.present ? `<span class="v ok">yes</span>` : `<span class="v warn">no</span>`}</div>`);
 }
 
 function cardBlocklists(b) {
   if (!b || b.status !== "ok" || !(b.results || []).length) return "";
   const rows = b.results.map((r) => {
     const v = r.blocked === true ? `<span class="v bad">blocked</span>`
-      : r.blocked === false ? `<span class="v ok">not blocked</span>`
-      : `<span class="v muted">unknown</span>`;
+      : r.blocked === false ? `<span class="v ok">not blocked</span>` : `<span class="v muted">unknown</span>`;
     return `<div class="row"><span class="k">${esc(r.filter)}</span>${v}</div>`;
   }).join("");
   return card("DNS block lists", rows);
 }
 
-function cardPasses(passes) {
-  if (!passes || !passes.length) return "";
-  const items = passes.map((p) => `<div class="pass-item">${esc(p)}</div>`).join("");
-  return card(`Passes (${passes.length})`, `<div class="passes">${items}</div>`);
-}
-
-function cardMap(ip) {
-  if (!ip || ip.status !== "ok" || ip.lat == null || ip.lon == null) return "";
-  const W = 280, H = 140;
-  const x = ((Number(ip.lon) + 180) / 360) * W;
-  const y = ((90 - Number(ip.lat)) / 180) * H;
-  const loc = [ip.city, ip.country].filter(Boolean).join(", ");
-  return card("Server location", `
-    <svg viewBox="0 0 ${W} ${H}" class="map" xmlns="http://www.w3.org/2000/svg">
-      <rect x="0" y="0" width="${W}" height="${H}" rx="8" fill="#0c0d13" stroke="#242636"/>
-      <g stroke="#1f2430" stroke-width="0.5">
-        <line x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}"/>
-        <line x1="${W / 2}" y1="0" x2="${W / 2}" y2="${H}"/>
-        <line x1="${W / 4}" y1="0" x2="${W / 4}" y2="${H}"/>
-        <line x1="${3 * W / 4}" y1="0" x2="${3 * W / 4}" y2="${H}"/>
-        <line x1="0" y1="${H / 4}" x2="${W}" y2="${H / 4}"/>
-        <line x1="0" y1="${3 * H / 4}" x2="${W}" y2="${3 * H / 4}"/>
-      </g>
-      <g fill="#1c2433" opacity="0.8">
-        <ellipse cx="62" cy="55" rx="26" ry="18"/><ellipse cx="78" cy="95" rx="13" ry="20"/>
-        <ellipse cx="150" cy="52" rx="20" ry="14"/><ellipse cx="158" cy="92" rx="17" ry="22"/>
-        <ellipse cx="205" cy="60" rx="34" ry="22"/><ellipse cx="232" cy="103" rx="13" ry="9"/>
-      </g>
-      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="#dc2626" opacity="0.3"/>
-      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="#ef4444"/>
-    </svg>
-    <div class="muted" style="margin-top:8px">${esc(loc)} &middot; ${esc(ip.lat)}, ${esc(ip.lon)}</div>`);
-}
-
 function cardRedirects(rc) {
   if (!rc || !(rc.hops || []).length) return "";
-  const hops = rc.hops.map((h) =>
-    `<div class="row"><span class="k">${esc(h.status)}</span><span class="v muted">${esc(h.url)}</span></div>`).join("");
-  return card("Redirect chain",
-    row("Hops", esc(rc.count)) +
-    (rc.downgrade ? row("Downgrade", "HTTPS&rarr;HTTP", "bad") : "") + hops);
+  const hops = rc.hops.map((h) => `<div class="row"><span class="k">${esc(h.status)}</span><span class="v muted">${esc(h.url)}</span></div>`).join("");
+  return card("Redirect chain", row("Hops", esc(rc.count)) + (rc.downgrade ? row("Downgrade", "HTTPS&rarr;HTTP", "bad") : "") + hops);
 }
 
-function cardTLSConfig(t) {
-  if (!t || t.status !== "ok") return "";
-  const protos = t.protocols || {};
-  const rows = Object.keys(protos).map((k) => {
-    const weak = k === "TLSv1" || k === "TLSv1.1";
-    return `<div class="row"><span class="k">${esc(k)}</span>${
-      protos[k] === true ? `<span class="v ${weak ? "bad" : "ok"}">supported</span>`
-                         : `<span class="v muted">no</span>`}</div>`;
-  }).join("");
-  return card("TLS configuration",
-    (t.grade ? row("Config grade", esc(t.grade), t.grade === "old" ? "bad" : "ok") : "") + rows);
+function cardDomain(d) {
+  if (!d || d.status !== "ok") return "";
+  const years = d.age_days != null ? (d.age_days / 365).toFixed(1) + " yrs" : "?";
+  return card("Domain (RDAP)",
+    (d.registrar ? row("Registrar", esc(d.registrar)) : "") + row("Age", years) +
+    (d.expires_in_days != null ? row("Expires in", esc(d.expires_in_days) + " days", d.expires_in_days < 30 ? "bad" : "") : ""));
 }
 
-function cardPorts(p) {
-  if (!p || p.status !== "ok") return "";
-  const rows = (p.open || []).map((o) =>
-    row(`${esc(o.port)} ${esc(o.service)}`, o.risky ? "risky" : "open", o.risky ? "bad" : "ok")).join("");
-  return card("Open ports (active)",
-    row("Scanned", esc(p.scanned)) + row("Open", esc((p.open || []).length)) + rows);
-}
-
-function cardReputation(r) {
-  if (!r || r.status !== "ok") return "";
-  const listed = r.listed
-    ? `<span class="v bad">listed (${esc((r.sources || []).join(", "))})</span>`
-    : `<span class="v ok">clean</span>`;
-  return card("Threat reputation",
-    `<div class="row"><span class="k">Status</span>${listed}</div>` +
-    (r.listed ? row("Malicious URLs", esc(r.url_count)) : ""));
-}
-
-function cardTyposquat(t) {
-  if (!t || t.status !== "ok") return "";
-  const reg = t.registered || [];
-  const tags = reg.slice(0, 16).map((r) =>
-    `<span class="tag" style="border-color:var(--medium);color:var(--medium)">${esc(r.domain)}</span>`).join("");
-  return card("Lookalike domains",
-    row("Variants checked", esc(t.checked)) +
-    row("Registered", esc(reg.length), reg.length ? "warn" : "ok") +
-    (tags ? `<div class="tags" style="margin-top:10px">${tags}</div>` : ""));
+function cardCloud(c) {
+  if (!c || !(c.buckets || []).length) return "";
+  return card("Cloud storage", c.buckets.map((b) => row(`${esc(b.provider.toUpperCase())} ${esc(b.name)}`, esc(b.access), b.access === "public" ? "bad" : "ok")).join(""));
 }
 
 function cardArchive(a) {
   if (!a || a.status !== "ok" || !a.snapshots) return "";
   return card("Archive history",
-    (a.first ? row("First archived", esc(a.first)) : "") +
-    row("Snapshots", esc(a.snapshots) + (a.truncated ? "+" : "")));
+    (a.first ? row("First archived", esc(a.first)) : "") + row("Snapshots", esc(a.snapshots) + (a.truncated ? "+" : "")));
 }
 
-function cardWebContent(w) {
-  if (!w || w.status !== "ok") return "";
-  const waf = (w.waf || []).length
-    ? `<span class="v ok">${w.waf.map(esc).join(", ")}</span>`
-    : `<span class="v muted">none detected</span>`;
-  const links = w.links || {}, robots = w.robots || {}, sitemap = w.sitemap || {};
-  const social = Object.keys(w.social || {}).length;
-  return card("Web content",
-    `<div class="row"><span class="k">WAF / CDN</span>${waf}</div>` +
-    row("Links", `${esc(links.internal || 0)} internal / ${esc(links.external || 0)} external`) +
-    row("robots.txt", robots.present ? "yes" : "no", robots.present ? "ok" : "") +
-    row("sitemap.xml", sitemap.present ? `${esc(sitemap.urls)} urls` : "no", sitemap.present ? "ok" : "") +
-    row("Social tags", esc(social), social ? "ok" : ""));
+function cardPasses(passes) {
+  if (!passes || !passes.length) return "";
+  return card(`Passes [${passes.length}]`, `<div class="passes">${passes.map((p) => `<div class="pass-item">${esc(p)}</div>`).join("")}</div>`);
 }

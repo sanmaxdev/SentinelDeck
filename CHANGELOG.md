@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [1.2.0] - 2026-06-29
+
+### Changed
+
+- Redesigned the web dashboard with a terminal-style theme: monospace type, a
+  grid-divided layout, and 90-degree corners.
+- Added a dark / light mode toggle that remembers your choice.
+- Added a security-posture radar (TLS, email, DNS, headers, surface, trust) and a
+  dot-matrix server-location map with a coordinate pin.
+- Made the active-scan toggle clearly labelled, and removed the per-finding
+  checkboxes from the findings list.
+
 ## [1.1.0] - 2026-06-29
 
 ### Added

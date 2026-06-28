@@ -1,30 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SentinelDeck</title>
+  <title>SENTINELDECK</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="scanlines" aria-hidden="true"></div>
+
   <header class="topbar">
     <div class="brand">
-      <span class="brand-mark"></span>
+      <span class="brand-bar"></span>
       <span class="brand-name">SENTINEL<span class="brand-accent">DECK</span></span>
-      <span class="brand-tag">passive attack-surface radar</span>
+      <span class="brand-tag">// PASSIVE ATTACK-SURFACE TELEMETRY</span>
     </div>
     <form id="scan-form" class="scan-form" autocomplete="off">
-      <input id="domain" name="domain" type="text" placeholder="example.com" aria-label="Domain to scan" required>
-      <label class="active-toggle" title="Also run an active TCP port scan"><input type="checkbox" id="active-scan"> active</label>
-      <button id="scan-btn" type="submit">Scan</button>
+      <span class="prompt">&gt;</span>
+      <input id="domain" name="domain" type="text" placeholder="TARGET.DOMAIN" aria-label="Domain to scan" required>
+      <label class="active-toggle" title="Also run an active TCP port scan">
+        <input type="checkbox" id="active-scan"><span>ACTIVE</span>
+      </label>
+      <button id="scan-btn" type="submit">SCAN</button>
+      <button type="button" id="theme-btn" class="theme-btn" title="Toggle dark / light" aria-label="Toggle theme">◐</button>
     </form>
   </header>
 
   <main id="main">
     <section id="intro" class="intro">
-      <h1>Scan a domain's public attack surface</h1>
-      <p>Passive only. The same lookups a browser or mail server makes &mdash; no intrusive scanning.
-         You get a grade, prioritised findings, and a copy-paste fix for each.</p>
+      <div class="intro-mark">[ ATTACK-SURFACE RECON UNIT ]</div>
+      <h1>SCAN A DOMAIN'S<br>PUBLIC ATTACK SURFACE</h1>
+      <p>PASSIVE ONLY // THE SAME LOOKUPS A BROWSER OR MAIL SERVER MAKES. A RISK GRADE,
+         PRIORITISED FINDINGS, AND A COPY-PASTE FIX FOR EACH.</p>
       <div class="examples">
         <button class="chip" data-domain="example.com">example.com</button>
         <button class="chip" data-domain="github.com">github.com</button>
@@ -35,7 +42,7 @@
     <section id="progress" class="progress hidden">
       <div class="spinner"></div>
       <div class="progress-body">
-        <div class="progress-title">Scanning <span id="progress-domain"></span></div>
+        <div class="progress-title">SCANNING <span id="progress-domain"></span></div>
         <ul id="progress-steps" class="progress-steps"></ul>
       </div>
     </section>
@@ -50,8 +57,8 @@
   </main>
 
   <footer class="foot">
-    <span id="foot-version"></span>
-    <a href="https://github.com/sanmaxdev/SentinelDeck" target="_blank" rel="noopener">github.com/sanmaxdev/SentinelDeck</a>
+    <span id="foot-version">SENTINELDECK // TELEMETRY CONSOLE</span>
+    <a href="https://github.com/sanmaxdev/SentinelDeck" target="_blank" rel="noopener">GITHUB.COM/SANMAXDEV/SENTINELDECK</a>
   </footer>
 
   <script src="app.js"></script>
