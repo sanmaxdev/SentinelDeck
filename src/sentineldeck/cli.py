@@ -17,7 +17,7 @@ from sentineldeck.reporters.badge import write_badge_svg, write_card_svg
 from sentineldeck.reporters.diff_report import write_diff_report
 from sentineldeck.reporters.html_report import read_json_report, write_html_report
 from sentineldeck.reporters.json_report import write_json_delta, write_json_report
-from sentineldeck.scanner import scan_domain
+from sentineldeck.scanner import scan_target
 from sentineldeck.suppressions import load_suppressions
 
 
@@ -29,8 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"SentinelDeck {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=False, metavar="command")
 
-    scan = subparsers.add_parser("scan", help="Run a safe passive scan against a domain.")
-    scan.add_argument("target", help="Domain to scan, e.g. example.com")
+    scan = subparsers.add_parser("scan", help="Run a safe passive scan against a domain or IP.")
+    scan.add_argument("target", help="Domain or IP to scan, e.g. example.com or 1.1.1.1")
     scan.add_argument("-o", "--output", help="Write JSON report to this path.")
     scan.add_argument("--html", help="Render a client-ready HTML report to this path.")
     scan.add_argument("--svg", help="Write a shareable SVG score card to this path.")
@@ -180,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
         tracker = tui.ScanProgress(args.target) if sys.stderr.isatty() else None
         try:
-            report = scan_domain(
+            report = scan_target(
                 args.target,
                 timeout=args.timeout,
                 suppressions=suppressions,

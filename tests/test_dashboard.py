@@ -34,7 +34,7 @@ def test_dashboard_scan_streams_progress_and_report(monkeypatch):
             progress("DNS resolution")
         return ScanReport(target=domain, generated_at="t", risk_score=10, grade="B", checks={}, findings=[])
 
-    monkeypatch.setattr(dashboard, "scan_domain", fake_scan)
+    monkeypatch.setattr(dashboard, "scan_target", fake_scan)
     httpd, port = _start_server()
     try:
         _, body = _get(port, "/api/scan?domain=example.com")

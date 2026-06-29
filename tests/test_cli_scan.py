@@ -17,7 +17,7 @@ def _fake_report() -> ScanReport:
 
 def test_cli_scan_prints_summary_to_stdout(monkeypatch, capsys):
     monkeypatch.setattr(
-        "sentineldeck.cli.scan_domain",
+        "sentineldeck.cli.scan_target",
         lambda target, timeout=10, suppressions=None, progress=None, active=False: _fake_report(),
     )
 
@@ -30,7 +30,7 @@ def test_cli_scan_prints_summary_to_stdout(monkeypatch, capsys):
 
 def test_cli_scan_writes_json_output_file(monkeypatch, capsys, tmp_path):
     monkeypatch.setattr(
-        "sentineldeck.cli.scan_domain",
+        "sentineldeck.cli.scan_target",
         lambda target, timeout=10, suppressions=None, progress=None, active=False: _fake_report(),
     )
     output = tmp_path / "out" / "example.json"
@@ -52,7 +52,7 @@ def test_cli_scan_forwards_timeout(monkeypatch):
         seen["timeout"] = timeout
         return _fake_report()
 
-    monkeypatch.setattr("sentineldeck.cli.scan_domain", fake_scan)
+    monkeypatch.setattr("sentineldeck.cli.scan_target", fake_scan)
 
     main(["scan", "example.com", "--timeout", "3"])
 

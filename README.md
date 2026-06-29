@@ -4,7 +4,7 @@
 
 <p>
   <strong>Passive attack-surface radar for small businesses, agencies, and security consultants.</strong><br>
-  One safe scan turns a domain into a clear risk grade, structured JSON, and a client-ready report.
+  One safe scan turns a domain or IP into a clear risk grade, structured JSON, and a client-ready report.
 </p>
 
 </div>
@@ -179,6 +179,7 @@ own footprint.
 | **Subdomains** | Public subdomain discovery via certificate transparency (crt.sh, CertSpotter) and passive DNS (HackerTarget), sensitive-name flagging, and dangling-CNAME takeover detection |
 | **Recon** | Technology fingerprint (CMS, framework, web server, CDN, analytics, with versions), vulnerable JavaScript libraries, and public cloud-storage (S3/GCS/Azure) exposure |
 | **Infrastructure** | IP geolocation + ASN/hosting, reverse DNS, server response time, full redirect chain, WAF/CDN detection, robots.txt, sitemap.xml, link analysis, and social meta tags |
+| **IP targets** | Point it at a bare IP (v4/v6) or a URL and it runs an IP-focused scan: geolocation + ASN, network allocation via RDAP (owning org, CIDR, abuse contact), reverse-IP hosted domains, reverse DNS, reputation, TLS, and headers |
 | **Threat intel** | Typosquatting / lookalike-domain detection, malware/phishing reputation (URLhaus), DNS blocklist checks (Cloudflare, Quad9, AdGuard…), and Wayback archive history |
 
 Every issue is scored by severity into a 0 to 100 risk score and an A to F grade.

@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [2.0.0] - 2026-06-29
+
+### Added
+
+- Scan an IP address, not just a domain. The search box and `sentineldeck scan`
+  now accept a bare IP (v4 or v6) or a URL as well as a hostname, auto-detect
+  which it is, and run an IP-focused recon pipeline: geolocation and ASN, the
+  network allocation via RDAP (owning organisation, CIDR block, and the abuse
+  contact for reporting a malicious host), reverse-IP hosted domains (what else
+  lives on the address), reverse DNS, threat reputation, TLS, HTTP headers,
+  technology fingerprint, and an optional active port scan. Domain-only surfaces
+  (email authentication, subdomains, typosquatting) are skipped, and a private or
+  reserved IP runs only the locally reachable surfaces.
+- Two new dashboard cards: Network allocation (RDAP), including the abuse
+  contact, and Reverse IP, listing the domains hosted on the address.
+
 ## [1.3.0] - 2026-06-29
 
 ### Added

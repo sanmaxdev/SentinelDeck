@@ -17,7 +17,7 @@
     </div>
     <form id="scan-form" class="scan-form" autocomplete="off">
       <span class="prompt">&gt;</span>
-      <input id="domain" name="domain" type="text" placeholder="TARGET.DOMAIN" aria-label="Domain to scan" required>
+      <input id="domain" name="domain" type="text" placeholder="DOMAIN OR IP ADDRESS" aria-label="Domain or IP address to scan" required>
       <label class="active-toggle" title="Also run an active TCP port scan">
         <input type="checkbox" id="active-scan"><span>ACTIVE</span>
       </label>
@@ -29,13 +29,13 @@
   <main id="main">
     <section id="intro" class="intro">
       <div class="intro-mark">[ ATTACK-SURFACE RECON UNIT ]</div>
-      <h1>SCAN A DOMAIN'S<br>PUBLIC ATTACK SURFACE</h1>
+      <h1>MAP A DOMAIN OR IP'S<br>PUBLIC ATTACK SURFACE</h1>
       <p>PASSIVE ONLY // THE SAME LOOKUPS A BROWSER OR MAIL SERVER MAKES. A RISK GRADE,
-         PRIORITISED FINDINGS, AND A COPY-PASTE FIX FOR EACH.</p>
+         PRIORITISED FINDINGS, AND A COPY-PASTE FIX FOR EACH. POINT IT AT A HOSTNAME OR A BARE IP.</p>
       <div class="examples">
         <button class="chip" data-domain="example.com">example.com</button>
         <button class="chip" data-domain="github.com">github.com</button>
-        <button class="chip" data-domain="cloudflare.com">cloudflare.com</button>
+        <button class="chip" data-domain="1.1.1.1">1.1.1.1</button>
       </div>
     </section>
 

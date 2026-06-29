@@ -24,10 +24,13 @@ from sentineldeck.scanners.http_headers import (
     trace_redirects,
 )
 from sentineldeck.scanners.ip_intel import analyze_ip_intel
+from sentineldeck.scanners.ip_rdap import analyze_ip_rdap
 from sentineldeck.scanners.ports import scan_ports
 from sentineldeck.scanners.reputation import check_reputation
+from sentineldeck.scanners.reverse_ip import reverse_ip
 from sentineldeck.scanners.subdomains import discover_subdomains, fetch_hostsearch
 from sentineldeck.scanners.takeover import detect_takeovers
+from sentineldeck.scanners.target import classify_target, is_private_ip
 from sentineldeck.scanners.tls import inspect_tls
 from sentineldeck.scanners.tls_config import analyze_tls_config
 from sentineldeck.scanners.typosquat import detect_typosquats
@@ -55,6 +58,9 @@ STAGE_LABELS = {
     "tls_config": "TLS configuration",
     "ports": "Open ports (active)",
     "blocklists": "DNS blocklists",
+    "ip_intel": "IP intelligence (geo, ASN)",
+    "ip_rdap": "Network allocation (RDAP)",
+    "reverse_ip": "Reverse IP (hosted domains)",
 }
 
 
@@ -98,9 +104,30 @@ def _summary(name: str, result) -> str:
             return f" :: {len(result.get('open', []))} open" if result.get("status") == "ok" else ""
         if name == "page":
             return " :: fetched" if result.get("reachable") else " :: unreachable"
+        if name == "ip_intel":
+            place = ", ".join(x for x in (result.get("city"), result.get("country")) if x)
+            if place:
+                return f" :: {place}"
+            return f" :: AS{result.get('asn')}" if result.get("asn") else ""
+        if name == "ip_rdap":
+            tag = result.get("org") or result.get("cidr")
+            return f" :: {str(tag)[:28]}" if tag else ""
+        if name == "reverse_ip":
+            return f" :: {result.get('count', 0)} domain(s)"
+        if name == "reputation":
+            return " :: listed" if (result.get("listed") or result.get("malicious")) else " :: clean"
     except Exception:  # noqa: BLE001 - a summary must never break a scan
         return ""
     return ""
+
+
+def _safe(fn, fallback):
+    """Run a surface and degrade it to ``fallback`` on failure, so a single
+    broken probe never aborts the whole scan."""
+    try:
+        return fn()
+    except Exception:  # noqa: BLE001 - one failed surface should not abort the scan
+        return fallback
 
 
 def scan_domain(
@@ -119,14 +146,6 @@ def scan_domain(
                 progress(label)
             except Exception:  # noqa: BLE001 - progress is cosmetic, never break a scan
                 pass
-
-    def _safe(fn, fallback):
-        """Run a surface and degrade it to ``fallback`` on failure, so a single
-        broken probe never aborts the whole scan."""
-        try:
-            return fn()
-        except Exception:  # noqa: BLE001 - one failed surface should not abort the scan
-            return fallback
 
     # A single resolver is shared by the DNS-backed probes so that, on a network
     # where direct port-53 DNS is blocked, the first failure trips its DoH
@@ -264,3 +283,126 @@ def scan_domain(
     report.risk_score = score_findings(report.findings)
     report.grade = grade(report.risk_score)
     return report
+
+
+def scan_ip(
+    target: str,
+    timeout: int = DEFAULT_TIMEOUT,
+    suppressions: list[str] | None = None,
+    progress: Callable[[str], None] | None = None,
+    active: bool = False,
+) -> ScanReport:
+    """Scan a bare IP address. Reuses the probes that make sense for a host and
+    adds network-allocation (RDAP) and reverse-IP (hosted domains) intelligence.
+    Domain-only surfaces (email, subdomains, typosquatting, DNS records) are
+    skipped. For a private/reserved IP the internet data sources are skipped and
+    only the locally reachable surfaces (HTTP, TLS, ports) run.
+    """
+    ip = target.strip().strip("[]")
+    report = ScanReport.empty(ip)
+    private = is_private_ip(ip)
+
+    def _notify(label: str) -> None:
+        if progress is not None:
+            try:
+                progress(label)
+            except Exception:  # noqa: BLE001 - progress is cosmetic, never break a scan
+                pass
+
+    resolver = Resolver()
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {
+            "http": pool.submit(fetch_headers, ip, timeout),
+            "redirect": pool.submit(check_http_redirect, ip, timeout),
+            "security_txt": pool.submit(check_security_txt, ip, timeout),
+            "tls": pool.submit(inspect_tls, ip, timeout),
+            "tls_config": pool.submit(analyze_tls_config, ip),
+            "page": pool.submit(fetch_page, ip, timeout),
+            "redirect_chain": pool.submit(trace_redirects, ip, timeout),
+        }
+        if not private:
+            futures["ip_intel"] = pool.submit(analyze_ip_intel, ip, timeout)
+            futures["ip_rdap"] = pool.submit(analyze_ip_rdap, ip)
+            futures["reverse_ip"] = pool.submit(reverse_ip, ip)
+            futures["reputation"] = pool.submit(check_reputation, ip)
+        if active:
+            futures["ports"] = pool.submit(scan_ports, ip)
+
+        name_by_future = {future: name for name, future in futures.items()}
+        results: dict = {}
+        for future in as_completed(name_by_future):
+            name = name_by_future[future]
+            try:
+                results[name] = future.result()
+            except Exception as exc:  # noqa: BLE001 - one failed probe must not abort the scan
+                results[name] = {"status": "error", "error": str(exc)}
+            _notify(STAGE_LABELS.get(name, name) + _summary(name, results[name]))
+
+    http = {**results["http"], **results["redirect"], "security_txt": results["security_txt"]}
+    headers = http.get("headers", {})
+    cookies = http.get("cookies", [])
+
+    page = results["page"]
+    if page.get("reachable"):
+        technologies = _safe(
+            lambda: {
+                "status": "ok",
+                "detected": fingerprint(page),
+                "vulnerable_js": detect_vulnerable_js(page.get("body", "")),
+            },
+            {"status": "error", "detected": [], "vulnerable_js": []},
+        )
+    else:
+        technologies = {"status": "error", "detected": [], "vulnerable_js": []}
+
+    cloud = _safe(lambda: analyze_cloud_assets(page.get("body", "")), {"status": "error", "buckets": []})
+    web_content = _safe(lambda: analyze_web_content(ip, page), {"status": "error"})
+
+    ip_intel = results.get("ip_intel", {"status": "skipped"})
+    if not private and isinstance(ip_intel, dict) and ip.count(".") == 3:
+        ptr = _safe(lambda: resolver(".".join(reversed(ip.split("."))) + ".in-addr.arpa", "PTR")[0], [])
+        if ptr:
+            ip_intel["hostnames"] = ptr
+
+    report.checks = {
+        "target_type": "ip",
+        # The target is already an address, so resolution is trivially satisfied;
+        # this keeps the scoring engine from flagging it as "unresolved".
+        "dns": {"resolved": True, "addresses": [ip]},
+        "http": http,
+        "missing_security_headers": missing_security_headers(headers),
+        "header_issues": evaluate_headers(headers, cookies),
+        "tls": results["tls"],
+        "tls_config": results["tls_config"],
+        "redirect_chain": results["redirect_chain"],
+        "technologies": technologies,
+        "cloud_assets": cloud,
+        "web_content": web_content,
+        "ip_intel": ip_intel,
+        "ip_rdap": results.get("ip_rdap", {"status": "skipped"}),
+        "reverse_ip": results.get("reverse_ip", {"status": "skipped", "domains": []}),
+        "reputation": results.get("reputation", {"status": "skipped"}),
+        "ports": results.get("ports", {"status": "skipped", "open": []}),
+    }
+    report.findings = build_findings(report.checks)
+    report.checks["passes"] = compute_passes(report.checks)
+    attach_remediations(report.findings, ip)
+    if suppressions:
+        apply_suppressions(report.findings, suppressions)
+    report.risk_score = score_findings(report.findings)
+    report.grade = grade(report.risk_score)
+    return report
+
+
+def scan_target(
+    target: str,
+    timeout: int = DEFAULT_TIMEOUT,
+    suppressions: list[str] | None = None,
+    progress: Callable[[str], None] | None = None,
+    active: bool = False,
+) -> ScanReport:
+    """Scan a domain or an IP address, picking the right pipeline automatically."""
+    kind, value = classify_target(target)
+    runner = scan_ip if kind == "ip" else scan_domain
+    return runner(value, timeout, suppressions, progress, active)

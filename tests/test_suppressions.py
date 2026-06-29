@@ -54,7 +54,7 @@ def test_cli_scan_loads_and_passes_suppressions(tmp_path, monkeypatch):
             target="example.com", generated_at="t", risk_score=0, grade="A", checks={}, findings=[]
         )
 
-    monkeypatch.setattr(cli_mod, "scan_domain", fake_scan)
+    monkeypatch.setattr(cli_mod, "scan_target", fake_scan)
     rc = cli_mod.main(["scan", "example.com", "--suppress", str(sup)])
 
     assert rc == 0

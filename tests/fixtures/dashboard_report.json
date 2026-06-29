@@ -342,6 +342,25 @@
 "host.example.com."
 ]
 },
+"ip_rdap": {
+"status": "ok",
+"name": "CLOUDFLARENET",
+"cidr": "104.16.0.0/13",
+"org": "Cloudflare, Inc.",
+"country": "US",
+"registered": "2014-03-28",
+"abuse_email": "abuse@cloudflare.com"
+},
+"reverse_ip": {
+"status": "ok",
+"count": 3,
+"domains": [
+"example.com",
+"foo.example.org",
+"bar.example.net"
+],
+"truncated": false
+},
 "typosquatting": {
 "status": "ok",
 "checked": 30,

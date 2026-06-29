@@ -120,6 +120,8 @@ function render(report) {
     cardDNSRecords(checks.dns_records),
     cardIP(checks.ip_intel),
     cardMap(checks.ip_intel),
+    cardIpRdap(checks.ip_rdap),
+    cardReverseIp(checks.reverse_ip),
     cardServerStatus(checks.http),
     cardHostNames(checks.ip_intel),
     cardPorts(checks.ports),
@@ -529,4 +531,25 @@ function cardArchive(a) {
 function cardPasses(passes) {
   if (!passes || !passes.length) return "";
   return card(`Passes [${passes.length}]`, `<div class="passes">${passes.map((p) => `<div class="pass-item">${esc(p)}</div>`).join("")}</div>`);
+}
+
+function cardIpRdap(d) {
+  if (!d || d.status !== "ok") return "";
+  return card("Network allocation (RDAP)",
+    (d.name ? row("Network", esc(d.name)) : "") +
+    (d.cidr ? row("Range", esc(d.cidr)) : "") +
+    (d.org ? row("Org", esc(d.org)) : "") +
+    (d.country ? row("Country", esc(d.country)) : "") +
+    (d.registered ? row("Registered", esc(d.registered)) : "") +
+    (d.abuse_email ? row("Abuse contact", esc(d.abuse_email), "warn") : ""));
+}
+
+function cardReverseIp(r) {
+  if (!r || r.status !== "ok" || !r.count) return "";
+  const shown = (r.domains || []).slice(0, 24);
+  const tags = shown.map((d) => `<span class="tag">${esc(d)}</span>`).join("");
+  return card("Reverse IP // hosted domains",
+    row("Hosted here", esc(r.count) + (r.truncated ? "+" : "")) +
+    (r.count > shown.length ? row("Showing", esc(shown.length)) : "") +
+    (tags ? `<div class="tags" style="margin-top:10px">${tags}</div>` : ""));
 }

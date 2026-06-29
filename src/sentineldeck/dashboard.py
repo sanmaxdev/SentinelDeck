@@ -18,8 +18,8 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from sentineldeck import __version__
-from sentineldeck.scanner import scan_domain
-from sentineldeck.scanners.domain import normalize_domain
+from sentineldeck.scanner import scan_target
+from sentineldeck.scanners.target import classify_target
 
 WEBUI_DIR = Path(__file__).parent / "webui"
 _CONTENT_TYPES = {
@@ -82,13 +82,13 @@ def _make_handler(timeout: int):
             active = (params.get("active") or ["0"])[0] == "1"
             self._sse_open()
             try:
-                domain = normalize_domain(target)
+                classify_target(target)
             except ValueError as exc:
                 self._emit("failed", {"message": str(exc)})
                 return
             try:
-                report = scan_domain(
-                    domain, timeout=timeout, active=active,
+                report = scan_target(
+                    target, timeout=timeout, active=active,
                     progress=lambda label: self._emit("progress", {"label": label}),
                 )
                 self._emit("done", report.to_dict())
