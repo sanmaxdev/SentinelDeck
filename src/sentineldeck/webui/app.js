@@ -28,41 +28,74 @@ const hide = (el) => el.classList.add("hidden");
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+let consoleStart = 0, consoleTimer = null;
+const elapsed = () => ((performance.now() - consoleStart) / 1000).toFixed(1);
+
+function consoleLine(html, cls) {
+  const body = $("#console-body");
+  const cursor = document.getElementById("console-cursor");
+  const line = document.createElement("div");
+  line.className = "cline" + (cls ? " " + cls : "");
+  line.innerHTML = html;
+  body.insertBefore(line, cursor);
+  body.scrollTop = body.scrollHeight;
+}
+
+const ts = () => `<span class="ts">[+${elapsed()}s]</span> `;
+
+function stopTimer() {
+  if (consoleTimer) { clearInterval(consoleTimer); consoleTimer = null; }
+}
+
 function startScan(domain) {
   if (source) source.close();
   hide(intro); hide(errBox); hide(results);
   $("#progress-domain").textContent = domain;
-  $("#progress-steps").innerHTML = "";
+  const active = document.getElementById("active-scan").checked;
+  $("#console-body").innerHTML = '<span id="console-cursor" class="cursor">█</span>';
   show(prog);
   btn.disabled = true; btn.textContent = "SCANNING…";
 
-  const active = document.getElementById("active-scan").checked ? "&active=1" : "";
-  source = new EventSource(`/api/scan?domain=${encodeURIComponent(domain)}${active}`);
+  consoleStart = performance.now();
+  consoleLine(`<span class="ts">$</span> sentineldeck scan ${esc(domain)}${active ? " --active" : ""}`, "cmd");
+  consoleLine(`${ts()}dispatching probes &middot; passive recon`, "muted-line");
+  stopTimer();
+  consoleTimer = setInterval(() => { $("#console-timer").textContent = "+" + elapsed() + "s"; }, 100);
+
+  source = new EventSource(`/api/scan?domain=${encodeURIComponent(domain)}${active ? "&active=1" : ""}`);
   source.addEventListener("progress", (ev) => {
-    const li = document.createElement("li");
-    li.textContent = JSON.parse(ev.data).label;
-    $("#progress-steps").appendChild(li);
+    consoleLine(ts() + esc(JSON.parse(ev.data).label), "ok-line");
   });
   source.addEventListener("done", (ev) => {
     source.close(); source = null;
-    try {
-      render(JSON.parse(ev.data));
-    } catch (err) {
-      hide(results);
-      errBox.textContent = "RENDER ERROR // " + (err && err.message ? err.message : err);
-      show(errBox);
-    }
-    finish();
+    const report = JSON.parse(ev.data);
+    const g = (report.grade || "?").toUpperCase();
+    consoleLine(`${ts()}scan complete :: grade ${esc(g)} :: ${(report.findings || []).length} findings`, "done-line");
+    stopTimer();
+    setTimeout(() => {
+      try {
+        render(report);
+      } catch (err) {
+        hide(results);
+        errBox.textContent = "RENDER ERROR // " + (err && err.message ? err.message : err);
+        show(errBox);
+      }
+      finish();
+    }, 650);
   });
   source.addEventListener("failed", (ev) => {
     source.close(); source = null;
     let msg = "SCAN FAILED.";
     try { msg = JSON.parse(ev.data).message; } catch (_) {}
+    consoleLine(`${ts()}ERROR :: ${esc(msg)}`, "err-line");
+    stopTimer();
     errBox.textContent = msg; show(errBox); finish();
   });
   source.addEventListener("error", () => {
     if (!source) return;
     source.close(); source = null;
+    consoleLine(`${ts()}connection to the scanner was lost`, "err-line");
+    stopTimer();
     errBox.textContent = "CONNECTION TO THE SCANNER WAS LOST."; show(errBox); finish();
   });
 }

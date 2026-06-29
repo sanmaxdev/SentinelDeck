@@ -98,14 +98,24 @@ main { max-width: 1280px; margin: 0 auto; padding: 26px 24px; position: relative
 .chip { background: transparent; color: var(--fg); border: 1px solid var(--border); padding: 9px 16px; text-transform: none; letter-spacing: 0.04em; font-weight: 500; }
 .chip:hover { border-color: var(--red); color: var(--red); background: transparent; }
 
-/* Progress */
-.progress { display: flex; gap: 18px; align-items: flex-start; border: 1px solid var(--border); padding: 22px 24px; }
-.spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--red); animation: spin .8s linear infinite; flex: none; margin-top: 2px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.progress-title { font-weight: 700; margin-bottom: 12px; letter-spacing: 0.1em; }
-.progress-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 5px 18px; }
-.progress-steps li { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
-.progress-steps li::before { content: "[ OK ] "; color: var(--green); }
+/* Live telemetry console */
+.console { border: 1px solid var(--border); background: var(--panel); }
+.console-bar { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+.console-rec { width: 9px; height: 9px; background: var(--red); animation: rec 1s steps(2) infinite; }
+@keyframes rec { 50% { opacity: 0.15; } }
+.console-title { font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
+.console-timer { margin-left: auto; color: var(--red); font-weight: 700; font-size: 13px; }
+.console-body { padding: 14px 16px; max-height: 440px; overflow-y: auto; font-size: 12.5px; line-height: 1.75; }
+.cline { white-space: pre-wrap; word-break: break-word; color: var(--muted); letter-spacing: 0.02em; }
+.cline .ts { color: var(--dim); }
+.cline.cmd { color: var(--fg); font-weight: 700; }
+.cline.cmd .ts { color: var(--red); }
+.cline.ok-line { color: var(--fg); }
+.cline.done-line { color: var(--green); font-weight: 700; }
+.cline.err-line { color: var(--high); }
+.cline.muted-line { color: var(--dim); }
+.cursor { display: inline-block; color: var(--red); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
 
 .error { border: 1px solid var(--red); color: var(--red); padding: 16px 20px; letter-spacing: 0.05em; }
 

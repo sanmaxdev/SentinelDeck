@@ -104,9 +104,10 @@ def test_scan_domain_reports_progress(monkeypatch):
     labels: list[str] = []
     scan_domain("example.com", progress=labels.append)
 
-    assert "DNS resolution" in labels
-    assert "Technology fingerprint" in labels
-    assert "IP intelligence (geo, ASN)" in labels
+    # Labels now carry a " :: <summary>" suffix, so match on the stage prefix.
+    assert any(lbl.startswith("DNS resolution") for lbl in labels)
+    assert any(lbl.startswith("Technology fingerprint") for lbl in labels)
+    assert any(lbl.startswith("IP intelligence (geo, ASN)") for lbl in labels)
     assert len(labels) >= 10
 
 

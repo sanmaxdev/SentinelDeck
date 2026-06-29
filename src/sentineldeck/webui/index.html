@@ -39,12 +39,13 @@
       </div>
     </section>
 
-    <section id="progress" class="progress hidden">
-      <div class="spinner"></div>
-      <div class="progress-body">
-        <div class="progress-title">SCANNING <span id="progress-domain"></span></div>
-        <ul id="progress-steps" class="progress-steps"></ul>
+    <section id="progress" class="console hidden">
+      <div class="console-bar">
+        <span class="console-rec"></span>
+        <span class="console-title">LIVE TELEMETRY // <span id="progress-domain"></span></span>
+        <span class="console-timer" id="console-timer">+0.0s</span>
       </div>
+      <div class="console-body" id="console-body"></div>
     </section>
 
     <section id="error" class="error hidden"></section>

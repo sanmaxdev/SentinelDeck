@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [1.3.0] - 2026-06-29
+
+### Added
+
+- A live telemetry console in the web dashboard. While a scan runs, every surface
+  streams in as a timestamped line with a short result summary (address count,
+  TLS protocol, subdomains found, lookalikes registered, server location, and
+  more), with a running elapsed clock and a blinking cursor, so you can watch the
+  scan work instead of staring at a spinner.
+
 ## [1.2.2] - 2026-06-29
 
 ### Fixed

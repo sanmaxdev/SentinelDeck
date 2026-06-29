@@ -58,6 +58,51 @@ STAGE_LABELS = {
 }
 
 
+def _summary(name: str, result) -> str:
+    """A short, human one-liner about what a probe found, for the live console."""
+    if not isinstance(result, dict):
+        return ""
+    if result.get("status") == "error":
+        return " :: error"
+    try:
+        if name == "dns":
+            n = len(result.get("addresses") or [])
+            return f" :: {n} address(es)" if n else " :: no A record"
+        if name == "http":
+            if not result.get("reachable"):
+                return " :: unreachable"
+            return f" :: {result.get('status')} ({result.get('response_time_ms', '?')} ms)"
+        if name == "tls":
+            if not result.get("reachable"):
+                return " :: unreachable"
+            return f" :: {result.get('protocol', '?')}, {'valid' if result.get('valid') else 'untrusted'}"
+        if name == "tls_config":
+            return f" :: grade {result.get('grade')}" if result.get("status") == "ok" else ""
+        if name == "email":
+            on = [k.upper() for k in ("spf", "dmarc", "dkim") if (result.get(k) or {}).get("present")]
+            return f" :: {', '.join(on) or 'none'}"
+        if name == "subdomains":
+            return f" :: {result.get('count', 0)} found" if result.get("status") == "ok" else ""
+        if name == "typosquat":
+            return f" :: {len(result.get('registered', []))} registered"
+        if name == "blocklists":
+            blocked = result.get("blocked_security") or []
+            return f" :: blocked by {', '.join(blocked)}" if blocked else " :: clean"
+        if name == "domain_intel":
+            return f" :: {str(result.get('registrar', ''))[:28]}" if result.get("status") == "ok" else ""
+        if name == "redirect_chain":
+            return f" :: {result.get('count', 0)} hop(s)"
+        if name == "archive":
+            return f" :: since {result.get('first')}" if result.get("snapshots") else " :: none"
+        if name == "ports":
+            return f" :: {len(result.get('open', []))} open" if result.get("status") == "ok" else ""
+        if name == "page":
+            return " :: fetched" if result.get("reachable") else " :: unreachable"
+    except Exception:  # noqa: BLE001 - a summary must never break a scan
+        return ""
+    return ""
+
+
 def scan_domain(
     target: str,
     timeout: int = DEFAULT_TIMEOUT,
@@ -124,7 +169,7 @@ def scan_domain(
                 results[name] = future.result()
             except Exception as exc:  # noqa: BLE001 - one failed probe must not abort the scan
                 results[name] = {"status": "error", "error": str(exc)}
-            _notify(STAGE_LABELS.get(name, name))
+            _notify(STAGE_LABELS.get(name, name) + _summary(name, results[name]))
 
     # Takeover detection needs the discovered hostnames, so it runs after the
     # concurrent block, reusing the same DoH-aware resolver.
@@ -135,7 +180,8 @@ def scan_domain(
             lambda: detect_takeovers(hosts, resolver=resolver, timeout=timeout),
             {"status": "error", "candidates": [], "checked": 0},
         )
-        _notify("Subdomain takeover")
+        _candidates = takeover.get("candidates", [])
+        _notify("Subdomain takeover" + (f" :: {len(_candidates)} candidate(s)" if _candidates else " :: none"))
     else:
         takeover = {"status": "skipped", "candidates": [], "checked": 0}
 
@@ -160,10 +206,11 @@ def scan_domain(
 
     cloud = _safe(lambda: analyze_cloud_assets(page.get("body", "")), {"status": "error", "buckets": []})
     if cloud.get("buckets"):
-        _notify("Cloud storage exposure")
+        _notify(f"Cloud storage exposure :: {len(cloud['buckets'])} bucket(s)")
 
     web_content = _safe(lambda: analyze_web_content(domain, page), {"status": "error"})
-    _notify("Web content (links, social, WAF, robots)")
+    _waf = web_content.get("waf") or []
+    _notify("Web content (links, social, WAF, robots)" + (f" :: WAF {', '.join(_waf)}" if _waf else ""))
 
     addresses = results["dns"].get("addresses") or []
     ip_intel = _safe(lambda: analyze_ip_intel(addresses[0] if addresses else None, timeout), {"status": "error"})
@@ -171,7 +218,8 @@ def scan_domain(
         ptr = _safe(lambda: resolver(".".join(reversed(addresses[0].split("."))) + ".in-addr.arpa", "PTR")[0], [])
         if ptr:
             ip_intel["hostnames"] = ptr
-    _notify("IP intelligence (geo, ASN)")
+    _place = ", ".join(x for x in (ip_intel.get("city"), ip_intel.get("country")) if x)
+    _notify("IP intelligence (geo, ASN)" + (f" :: {_place}" if _place else ""))
 
     dns_hygiene_result = results["dns_hygiene"]
     dns_records = {
