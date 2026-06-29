@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [2.2.0] - 2026-06-29
+
+### Added
+
+- Network footprint mapping. From the resolved host SentinelDeck now finds the
+  owning autonomous system and every prefix it announces (via RIPEstat, free and
+  keyless), so one domain or IP reveals the organisation's whole routed IP estate
+  — the ASN, operator, total announced prefixes, and IPv4 address space — shown in
+  a new dashboard card.
+
 ## [2.1.0] - 2026-06-29
 
 ### Added

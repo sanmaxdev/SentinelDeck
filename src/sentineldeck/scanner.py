@@ -7,6 +7,7 @@ from sentineldeck.models import ScanReport
 from sentineldeck.remediation import attach_remediations
 from sentineldeck.risk.scoring import build_findings, compute_passes, grade, score_findings
 from sentineldeck.scanners.archive import archive_history
+from sentineldeck.scanners.asn import analyze_asn
 from sentineldeck.scanners.blocklists import check_blocklists
 from sentineldeck.scanners.cloud_assets import analyze_cloud_assets
 from sentineldeck.scanners.dns_hygiene import analyze_dns_hygiene
@@ -65,6 +66,7 @@ STAGE_LABELS = {
     "ip_rdap": "Network allocation (RDAP)",
     "reverse_ip": "Reverse IP (hosted domains)",
     "internetdb": "Exposure & CVEs (Shodan InternetDB)",
+    "asn": "Network footprint (ASN)",
 }
 
 
@@ -121,6 +123,8 @@ def _summary(name: str, result) -> str:
         if name == "internetdb":
             np_, nv = len(result.get("ports") or []), len(result.get("vulns") or [])
             return f" :: {np_} port(s), {nv} CVE(s)" if (np_ or nv) else " :: clean"
+        if name == "asn":
+            return f" :: AS{result.get('asn')}, {result.get('prefix_count', 0)} prefix(es)" if result.get("asn") else ""
         if name == "reputation":
             return " :: listed" if (result.get("listed") or result.get("malicious")) else " :: clean"
     except Exception:  # noqa: BLE001 - a summary must never break a scan
@@ -271,6 +275,12 @@ def scan_domain(
         internetdb["kev"] = filter_kev(internetdb["vulns"])
     _notify("Exposure & CVEs (Shodan InternetDB)" + _summary("internetdb", internetdb))
 
+    if addresses:
+        asn_footprint = _safe(lambda: analyze_asn(addresses[0], timeout), {"status": "error"})
+    else:
+        asn_footprint = {"status": "skipped"}
+    _notify("Network footprint (ASN)" + _summary("asn", asn_footprint))
+
     spf_record = (results["email"].get("spf") or {}).get("record") or ""
     spf_includes = [t.split(":", 1)[1] for t in spf_record.split() if t.lower().startswith("include:")]
     saas = _safe(
@@ -283,6 +293,7 @@ def scan_domain(
     report.checks = {
         "dns": results["dns"],
         "internetdb": internetdb,
+        "asn_footprint": asn_footprint,
         "saas_stack": saas,
         "http": http,
         "missing_security_headers": missing_security_headers(headers),
@@ -358,6 +369,7 @@ def scan_ip(
             futures["reverse_ip"] = pool.submit(reverse_ip, ip)
             futures["reputation"] = pool.submit(check_reputation, ip)
             futures["internetdb"] = pool.submit(analyze_internetdb, ip, timeout)
+            futures["asn"] = pool.submit(analyze_asn, ip, timeout)
         if active:
             futures["ports"] = pool.submit(scan_ports, ip)
 
@@ -407,6 +419,7 @@ def scan_ip(
         # this keeps the scoring engine from flagging it as "unresolved".
         "dns": {"resolved": True, "addresses": [ip]},
         "internetdb": internetdb,
+        "asn_footprint": results.get("asn", {"status": "skipped"}),
         "http": http,
         "missing_security_headers": missing_security_headers(headers),
         "header_issues": evaluate_headers(headers, cookies),

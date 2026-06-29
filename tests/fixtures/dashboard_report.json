@@ -370,6 +370,18 @@
 "tags": ["cdn"],
 "hostnames": ["host.example.com"]
 },
+"asn_footprint": {
+"status": "ok",
+"asn": "13335",
+"holder": "CLOUDFLARENET, US",
+"prefix": "104.20.23.0/24",
+"prefixes": ["104.16.0.0/13", "104.20.0.0/20", "2606:4700::/32"],
+"prefix_count": 3,
+"ipv4_addresses": 528384,
+"ipv4_prefixes": 2,
+"ipv6_prefixes": 1,
+"truncated": false
+},
 "saas_stack": {
 "status": "ok",
 "count": 3,

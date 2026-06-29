@@ -182,6 +182,7 @@ own footprint.
 | **IP targets** | Point it at a bare IP (v4/v6) or a URL and it runs an IP-focused scan: geolocation + ASN, network allocation via RDAP (owning org, CIDR, abuse contact), reverse-IP hosted domains, reverse DNS, reputation, TLS, and headers |
 | **Threat intel** | Typosquatting / lookalike-domain detection, malware/phishing reputation (URLhaus), DNS blocklist checks (Cloudflare, Quad9, AdGuard…), and Wayback archive history |
 | **Exposure & CVEs** | Open ports, service tags, and known CVEs for the host via Shodan InternetDB (passive, keyless), cross-referenced with the CISA Known Exploited Vulnerabilities catalog so actively-exploited CVEs are flagged |
+| **Network footprint** | The owning ASN and every announced prefix for the host (via RIPEstat), mapping an organisation's whole routed IP estate from a single domain or IP |
 | **SaaS footprint** | The vendors a domain reveals through its TXT, SPF, and MX records, decoded into a readable technology profile (Microsoft 365, Google Workspace, Atlassian, Shopify, Stripe, and more) |
 
 Every issue is scored by severity into a 0 to 100 risk score and an A to F grade.

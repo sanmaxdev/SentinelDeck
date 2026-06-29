@@ -33,6 +33,10 @@ def _stub_ip_probes(monkeypatch):
         p + "analyze_internetdb",
         lambda ip, timeout=10: {"status": "ok", "ports": [443], "vulns": ["CVE-2021-44228"]},
     )
+    monkeypatch.setattr(
+        p + "analyze_asn",
+        lambda ip, timeout=12: {"status": "ok", "asn": "13335", "prefixes": ["1.1.1.0/24"], "prefix_count": 1},
+    )
 
 
 def test_scan_ip_builds_ip_report(monkeypatch):

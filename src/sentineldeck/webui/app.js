@@ -123,6 +123,7 @@ function render(report) {
     cardIP(checks.ip_intel),
     cardMap(checks.ip_intel),
     cardIpRdap(checks.ip_rdap),
+    cardAsn(checks.asn_footprint),
     cardReverseIp(checks.reverse_ip),
     cardServerStatus(checks.http),
     cardHostNames(checks.ip_intel),
@@ -569,6 +570,22 @@ function cardSaaS(s) {
   const items = s.services.map((v) =>
     `<div class="row"><span class="k">${esc(v.name)}</span><span class="v muted">${esc(v.category)}</span></div>`).join("");
   return card(`SaaS footprint [${s.count}]`, items);
+}
+
+function cardAsn(a) {
+  if (!a || a.status !== "ok" || !a.asn) return "";
+  const num = (n) => esc(Number(n || 0).toLocaleString());
+  const shown = (a.prefixes || []).slice(0, 20);
+  const tags = shown.map((p) => `<span class="tag">${esc(p)}</span>`).join("");
+  const prefixCounts = `${esc(a.ipv4_prefixes || 0)} v4 / ${esc(a.ipv6_prefixes || 0)} v6`;
+  return card("Network footprint // ASN",
+    row("ASN", "AS" + esc(a.asn)) +
+    (a.holder ? row("Operator", esc(a.holder)) : "") +
+    (a.prefix ? row("This prefix", esc(a.prefix)) : "") +
+    row("Announced prefixes", esc(a.prefix_count) + " (" + prefixCounts + ")") +
+    (a.ipv4_addresses ? row("IPv4 address space", num(a.ipv4_addresses)) : "") +
+    (a.prefix_count > shown.length ? row("Showing", esc(shown.length)) : "") +
+    (tags ? `<div class="tags" style="margin-top:8px">${tags}</div>` : ""));
 }
 
 function cardReverseIp(r) {
