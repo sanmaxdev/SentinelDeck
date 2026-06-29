@@ -213,6 +213,17 @@ Either way, this puts the `sentineldeck` command on your path. To verify:
 sentineldeck --version
 ```
 
+> **`sentineldeck: command not found` (or "not recognized" on Windows)?**
+> `pip` did a *user* install and its Scripts directory is not on your `PATH`. The
+> package is installed fine — run it as a module, which never depends on `PATH`:
+>
+> ```bash
+> python -m sentineldeck scan example.com
+> ```
+>
+> Or install with [pipx](https://pipx.pypa.io/), which puts the command on your
+> `PATH` for you: `pipx install sentineldeck`.
+
 For development, install the dev extras (pytest and ruff):
 
 ```bash

@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [2.2.2] - 2026-06-29
+
+### Added
+
+- `python -m sentineldeck` now runs the CLI — a PATH-independent way to start it
+  when pip does a user install and its Scripts directory is not on PATH (so the
+  bare `sentineldeck` command is not found). The README documents the fallback.
+
 ## [2.2.1] - 2026-06-29
 
 ### Fixed
