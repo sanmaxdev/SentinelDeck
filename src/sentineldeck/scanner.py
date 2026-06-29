@@ -75,6 +75,14 @@ def scan_domain(
             except Exception:  # noqa: BLE001 - progress is cosmetic, never break a scan
                 pass
 
+    def _safe(fn, fallback):
+        """Run a surface and degrade it to ``fallback`` on failure, so a single
+        broken probe never aborts the whole scan."""
+        try:
+            return fn()
+        except Exception:  # noqa: BLE001 - one failed surface should not abort the scan
+            return fallback
+
     # A single resolver is shared by the DNS-backed probes so that, on a network
     # where direct port-53 DNS is blocked, the first failure trips its DoH
     # circuit breaker once and the remaining lookups skip straight to DoH.
@@ -112,7 +120,10 @@ def scan_domain(
         # Report each surface as it finishes, so the user sees live progress.
         for future in as_completed(name_by_future):
             name = name_by_future[future]
-            results[name] = future.result()
+            try:
+                results[name] = future.result()
+            except Exception as exc:  # noqa: BLE001 - one failed probe must not abort the scan
+                results[name] = {"status": "error", "error": str(exc)}
             _notify(STAGE_LABELS.get(name, name))
 
     # Takeover detection needs the discovered hostnames, so it runs after the
@@ -120,7 +131,10 @@ def scan_domain(
     subdomains = results["subdomains"]
     hosts = subdomains.get("subdomains", []) if subdomains.get("status") == "ok" else []
     if hosts:
-        takeover = detect_takeovers(hosts, resolver=resolver, timeout=timeout)
+        takeover = _safe(
+            lambda: detect_takeovers(hosts, resolver=resolver, timeout=timeout),
+            {"status": "error", "candidates": [], "checked": 0},
+        )
         _notify("Subdomain takeover")
     else:
         takeover = {"status": "skipped", "candidates": [], "checked": 0}
@@ -133,27 +147,30 @@ def scan_domain(
     # and cloud-bucket discovery.
     page = results["page"]
     if page.get("reachable"):
-        technologies = {
-            "status": "ok",
-            "detected": fingerprint(page),
-            "vulnerable_js": detect_vulnerable_js(page.get("body", "")),
-        }
+        technologies = _safe(
+            lambda: {
+                "status": "ok",
+                "detected": fingerprint(page),
+                "vulnerable_js": detect_vulnerable_js(page.get("body", "")),
+            },
+            {"status": "error", "detected": [], "vulnerable_js": []},
+        )
     else:
         technologies = {"status": "error", "detected": [], "vulnerable_js": []}
 
-    cloud = analyze_cloud_assets(page.get("body", ""))
+    cloud = _safe(lambda: analyze_cloud_assets(page.get("body", "")), {"status": "error", "buckets": []})
     if cloud.get("buckets"):
         _notify("Cloud storage exposure")
 
-    web_content = analyze_web_content(domain, page)
+    web_content = _safe(lambda: analyze_web_content(domain, page), {"status": "error"})
     _notify("Web content (links, social, WAF, robots)")
 
     addresses = results["dns"].get("addresses") or []
-    ip_intel = analyze_ip_intel(addresses[0] if addresses else None, timeout)
+    ip_intel = _safe(lambda: analyze_ip_intel(addresses[0] if addresses else None, timeout), {"status": "error"})
     if addresses and addresses[0].count(".") == 3:
-        reverse = ".".join(reversed(addresses[0].split("."))) + ".in-addr.arpa"
-        ptr, _ = resolver(reverse, "PTR")
-        ip_intel["hostnames"] = ptr
+        ptr = _safe(lambda: resolver(".".join(reversed(addresses[0].split("."))) + ".in-addr.arpa", "PTR")[0], [])
+        if ptr:
+            ip_intel["hostnames"] = ptr
     _notify("IP intelligence (geo, ASN)")
 
     dns_hygiene_result = results["dns_hygiene"]

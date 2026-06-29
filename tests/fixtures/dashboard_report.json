@@ -1,0 +1,941 @@
+{
+"target": "example.com",
+"generated_at": "2026-06-29T13:30:04.013366+00:00",
+"risk_score": 66,
+"grade": "D",
+"checks": {
+"dns": {
+"resolved": true,
+"addresses": [
+"104.20.23.154",
+"172.66.147.243"
+]
+},
+"http": {
+"reachable": true,
+"url": "https://example.com",
+"status": 200,
+"headers": {
+"date": "Mon, 29 Jun 2026 13:30:06 GMT",
+"content-type": "text/html",
+"connection": "close",
+"server": "cloudflare",
+"last-modified": "Sat, 27 Jun 2026 11:26:45 GMT",
+"allow": "GET, HEAD",
+"accept-ranges": "bytes",
+"age": "4405",
+"cf-cache-status": "HIT",
+"cf-ray": "a13548abcd48aed1-CMB"
+},
+"error": null,
+"response_time_ms": 209,
+"cookies": [],
+"https_redirect": false,
+"http_status": 200,
+"security_txt": {
+"present": false,
+"status": 404,
+"url": "https://example.com/.well-known/security.txt"
+}
+},
+"missing_security_headers": {
+"strict-transport-security": "Add HSTS to force browsers to use HTTPS.",
+"content-security-policy": "Add a Content-Security-Policy to reduce XSS and injection impact.",
+"x-content-type-options": "Add X-Content-Type-Options: nosniff.",
+"x-frame-options": "Add X-Frame-Options or frame-ancestors to reduce clickjacking risk.",
+"referrer-policy": "Add Referrer-Policy to limit sensitive URL leakage.",
+"permissions-policy": "Add Permissions-Policy to restrict browser features."
+},
+"header_issues": [
+{
+"id": "no-coop",
+"title": "No Cross-Origin-Opener-Policy",
+"severity": "info",
+"description": "Cross-Origin-Opener-Policy is not set, so the page shares a browsing-context group with cross-origin openers (a building block for cross-origin isolation).",
+"recommendation": "Set Cross-Origin-Opener-Policy: same-origin where compatible.",
+"evidence": {}
+},
+{
+"id": "no-corp",
+"title": "No Cross-Origin-Resource-Policy",
+"severity": "info",
+"description": "Cross-Origin-Resource-Policy is not set, so other origins can embed this site's resources.",
+"recommendation": "Set Cross-Origin-Resource-Policy: same-origin or same-site where appropriate.",
+"evidence": {}
+},
+{
+"id": "no-coep",
+"title": "No Cross-Origin-Embedder-Policy",
+"severity": "info",
+"description": "Cross-Origin-Embedder-Policy is not set, which is required for cross-origin isolation.",
+"recommendation": "Set Cross-Origin-Embedder-Policy: require-corp to enable cross-origin isolation.",
+"evidence": {}
+}
+],
+"tls": {
+"reachable": true,
+"valid": true,
+"verified": true,
+"reason": null,
+"protocol": "TLSv1.3",
+"protocol_outdated": false,
+"cipher_suite": "TLS_AES_256_GCM_SHA384",
+"cipher_bits": 256,
+"alpn": "h2",
+"forward_secrecy": true,
+"subject_cn": "example.com",
+"issuer_cn": "Cloudflare TLS Issuing ECC CA 3",
+"issuer_org": "SSL Corporation",
+"san": [
+"example.com",
+"*.example.com"
+],
+"not_before": "2026-05-31T21:39:12+00:00",
+"expires_at": "2026-08-29T21:41:26+00:00",
+"days_remaining": 61,
+"expired": false,
+"not_yet_valid": false,
+"self_signed": false,
+"key_type": "EC",
+"key_bits": 256,
+"signature_algorithm": "sha256",
+"hostname_match": true,
+"serial": "1aa73fea257be3334b9a29552e6f878e",
+"fingerprint_sha256": "beab14cf39678fda0ef1606eedb818c2298ba2cc7a00886e7dc2d2410f24cd35",
+"extended_key_usage": [
+"TLS Web Server Authentication"
+]
+},
+"email_security": {
+"mx": {
+"present": true,
+"records": [
+"0 ."
+],
+"status": "ok"
+},
+"spf": {
+"present": true,
+"records": [
+"v=spf1 -all"
+],
+"policy": "-all",
+"lookup_count": 0,
+"multiple": false,
+"status": "ok"
+},
+"dmarc": {
+"present": true,
+"records": [
+"v=DMARC1;p=reject;sp=reject;adkim=s;aspf=s"
+],
+"policy": "reject",
+"pct": null,
+"subdomain_policy": "reject",
+"rua": null,
+"status": "ok"
+},
+"dkim": {
+"present": true,
+"checked_selectors": [
+"default",
+"google",
+"selector1",
+"selector2",
+"k1",
+"k2",
+"mail",
+"dkim",
+"s1",
+"s2",
+"mandrill",
+"zoho",
+"protonmail",
+"fm1"
+],
+"found_selectors": [
+"default",
+"google",
+"selector1",
+"selector2",
+"k1",
+"k2",
+"mail",
+"dkim",
+"s1",
+"s2",
+"mandrill",
+"zoho",
+"protonmail",
+"fm1"
+],
+"key_bits": null,
+"status": "ok"
+},
+"mta_sts": {
+"present": false,
+"record": null,
+"status": "ok"
+},
+"tls_rpt": {
+"present": false,
+"record": null,
+"status": "ok"
+},
+"bimi": {
+"present": false,
+"record": null,
+"status": "ok"
+}
+},
+"dns_hygiene": {
+"soa": {
+"records": [
+"elliott.ns.cloudflare.com. dns.cloudflare.com. 2407636105 10000 2400 604800 1800"
+],
+"status": "ok"
+},
+"txt": {
+"records": [
+"v=spf1 -all",
+"_k2n1y4vw3qtb4skdx9e7dxt97qrmmq9"
+],
+"status": "ok"
+},
+"caa": {
+"present": false,
+"records": [],
+"status": "ok"
+},
+"dnssec": {
+"enabled": true,
+"status": "ok"
+},
+"ns": {
+"records": [
+"elliott.ns.cloudflare.com.",
+"hera.ns.cloudflare.com."
+],
+"count": 2,
+"status": "ok"
+},
+"ipv6": {
+"present": true,
+"records": [
+"2606:4700:10::ac42:93f3",
+"2606:4700:10::6814:179a"
+],
+"status": "ok"
+},
+"dane": {
+"present": false,
+"records": [],
+"status": "ok"
+}
+},
+"domain_intel": {
+"status": "ok",
+"registrar": "RESERVED-Internet Assigned Numbers Authority",
+"created": "1995-08-14T04:00:00+00:00",
+"expires": "2026-08-13T04:00:00+00:00",
+"age_days": 11277,
+"expires_in_days": 44
+},
+"subdomains": {
+"status": "ok",
+"source": "certificate transparency, passive DNS",
+"count": 1,
+"subdomains": [
+"www.example.com"
+],
+"sensitive": [],
+"truncated": false
+},
+"takeover": {
+"status": "ok",
+"candidates": [],
+"checked": 1
+},
+"technologies": {
+"status": "ok",
+"detected": [
+{
+"name": "Cloudflare",
+"category": "CDN",
+"version": null
+}
+],
+"vulnerable_js": [
+{
+"library": "jquery",
+"version": "3.4.1",
+"advisory": "CVE-x",
+"severity": "medium"
+}
+]
+},
+"cloud_assets": {
+"status": "ok",
+"buckets": [
+{
+"provider": "s3",
+"name": "leaky",
+"access": "public",
+"url": "https://leaky.s3.amazonaws.com/"
+}
+]
+},
+"redirect_chain": {
+"hops": [
+{
+"url": "http://example.com",
+"status": 200
+}
+],
+"final_url": "http://example.com",
+"count": 1,
+"downgrade": false
+},
+"web_content": {
+"status": "ok",
+"links": {
+"internal": 0,
+"external": 1,
+"external_domains": [
+"iana.org"
+]
+},
+"social": {
+"og:title": "Example",
+"og:image": "https://example.com/og.png",
+"twitter:card": "summary"
+},
+"waf": [
+"Cloudflare"
+],
+"robots": {
+"present": false,
+"sitemaps": [],
+"disallow_count": 0,
+"disallows": []
+},
+"sitemap": {
+"present": false,
+"urls": 0,
+"pages": []
+}
+},
+"ip_intel": {
+"status": "ok",
+"ip": "104.20.23.154",
+"city": "LA",
+"region": "Ontario",
+"country": "US",
+"country_code": "CA",
+"isp": "Cloudflare, Inc.",
+"org": "Cloudflare, Inc.",
+"asn": "AS13335",
+"lat": 34.05,
+"lon": -118.44,
+"timezone": "America/Toronto",
+"hostnames": [
+"host.example.com."
+]
+},
+"typosquatting": {
+"status": "ok",
+"checked": 30,
+"registered": [
+{
+"domain": "e-xample.com",
+"resolves": true
+},
+{
+"domain": "eample.com",
+"resolves": true
+},
+{
+"domain": "eaxmple.com",
+"resolves": true
+},
+{
+"domain": "eexample.com",
+"resolves": true
+},
+{
+"domain": "ex-ample.com",
+"resolves": true
+},
+{
+"domain": "examle.com",
+"resolves": true
+},
+{
+"domain": "examlpe.com",
+"resolves": true
+},
+{
+"domain": "exammple.com",
+"resolves": true
+},
+{
+"domain": "examp-le.com",
+"resolves": true
+},
+{
+"domain": "exampe.com",
+"resolves": true
+},
+{
+"domain": "exampel.com",
+"resolves": true
+},
+{
+"domain": "exampl.com",
+"resolves": true
+},
+{
+"domain": "exampl3.com",
+"resolves": true
+},
+{
+"domain": "example.co",
+"resolves": true
+},
+{
+"domain": "example.net",
+"resolves": true
+},
+{
+"domain": "example.org",
+"resolves": true
+}
+],
+"truncated": true
+},
+"reputation": {
+"status": "error",
+"listed": false,
+"sources": [],
+"url_count": 0
+},
+"archive": {
+"status": "ok",
+"snapshots": 0,
+"first": null,
+"last": null
+},
+"tls_config": {
+"status": "ok",
+"protocols": {
+"TLSv1": false,
+"TLSv1.1": false,
+"TLSv1.2": true,
+"TLSv1.3": true
+},
+"weak_protocols": [],
+"grade": "intermediate"
+},
+"ports": {
+"status": "ok",
+"scanned": 23,
+"open": [
+{
+"port": 443,
+"service": "HTTPS",
+"risky": false
+},
+{
+"port": 3306,
+"service": "MySQL",
+"risky": true
+}
+]
+},
+"blocklists": {
+"status": "ok",
+"results": [
+{
+"filter": "Cloudflare Security",
+"blocked": false,
+"security": true
+},
+{
+"filter": "Cloudflare Family",
+"blocked": false,
+"security": false
+},
+{
+"filter": "Quad9",
+"blocked": null,
+"security": true
+},
+{
+"filter": "AdGuard",
+"blocked": null,
+"security": true
+},
+{
+"filter": "AdGuard Family",
+"blocked": null,
+"security": false
+},
+{
+"filter": "Google DNS",
+"blocked": false,
+"security": false
+}
+],
+"blocked_security": []
+},
+"dns_records": {
+"A": [
+"104.20.23.154",
+"172.66.147.243"
+],
+"AAAA": [
+"2606:4700:10::ac42:93f3",
+"2606:4700:10::6814:179a"
+],
+"MX": [
+"0 ."
+],
+"NS": [
+"elliott.ns.cloudflare.com.",
+"hera.ns.cloudflare.com."
+],
+"SOA": [
+"elliott.ns.cloudflare.com. dns.cloudflare.com. 2407636105 10000 2400 604800 1800"
+],
+"TXT": [
+"v=spf1 -all",
+"_k2n1y4vw3qtb4skdx9e7dxt97qrmmq9"
+],
+"CAA": []
+},
+"passes": [
+"TLS certificate valid and trusted",
+"TLS uses forward secrecy",
+"No deprecated TLS protocols",
+"SPF record present",
+"DMARC is enforced",
+"DKIM detected",
+"DNSSEC enabled",
+"Reachable over IPv6",
+"Not on security DNS blocklists",
+"No subdomain takeover detected",
+"No exposed cloud buckets"
+]
+},
+"findings": [
+{
+"id": "no-https-redirect",
+"title": "HTTP does not redirect to HTTPS",
+"severity": "medium",
+"description": "Plain HTTP requests are not redirected to HTTPS, leaving traffic exposed.",
+"recommendation": "Configure a 301 redirect from http:// to https:// for all paths.",
+"evidence": {
+"http_status": 200
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Redirect all HTTP traffic to HTTPS with a 301",
+"snippet": "# nginx\nserver {\n  listen 80;\n  server_name example.com www.example.com;\n  return 301 https://$host$request_uri;\n}\n\n# apache / litespeed (.htaccess)\nRewriteEngine On\nRewriteCond %{HTTPS} off\nRewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]",
+"kind": "config",
+"references": []
+},
+"suppressed": false
+},
+{
+"id": "no-coop",
+"title": "No Cross-Origin-Opener-Policy",
+"severity": "info",
+"description": "Cross-Origin-Opener-Policy is not set, so the page shares a browsing-context group with cross-origin openers (a building block for cross-origin isolation).",
+"recommendation": "Set Cross-Origin-Opener-Policy: same-origin where compatible.",
+"evidence": {},
+"confidence": "confirmed",
+"remediation": {
+"title": "Set a Cross-Origin-Opener-Policy",
+"snippet": "Cross-Origin-Opener-Policy: same-origin",
+"kind": "http",
+"references": [
+"https://developer.mozilla.org/docs/Web/HTTP/Headers/Cross-Origin-Opener-Policy"
+]
+},
+"suppressed": false
+},
+{
+"id": "no-corp",
+"title": "No Cross-Origin-Resource-Policy",
+"severity": "info",
+"description": "Cross-Origin-Resource-Policy is not set, so other origins can embed this site's resources.",
+"recommendation": "Set Cross-Origin-Resource-Policy: same-origin or same-site where appropriate.",
+"evidence": {},
+"confidence": "confirmed",
+"remediation": null,
+"suppressed": false
+},
+{
+"id": "no-coep",
+"title": "No Cross-Origin-Embedder-Policy",
+"severity": "info",
+"description": "Cross-Origin-Embedder-Policy is not set, which is required for cross-origin isolation.",
+"recommendation": "Set Cross-Origin-Embedder-Policy: require-corp to enable cross-origin isolation.",
+"evidence": {},
+"confidence": "confirmed",
+"remediation": null,
+"suppressed": false
+},
+{
+"id": "missing-strict-transport-security",
+"title": "Missing strict-transport-security header",
+"severity": "medium",
+"description": "The HTTPS response does not include strict-transport-security.",
+"recommendation": "Add HSTS to force browsers to use HTTPS.",
+"evidence": {
+"checked_header": "strict-transport-security",
+"known_headers": [
+"content-security-policy",
+"permissions-policy",
+"referrer-policy",
+"strict-transport-security",
+"x-content-type-options",
+"x-frame-options"
+]
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Send HSTS on every HTTPS response",
+"snippet": "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\n\n# nginx\nadd_header Strict-Transport-Security \"max-age=63072000; includeSubDomains; preload\" always;\n# apache / litespeed (.htaccess)\nHeader always set Strict-Transport-Security \"max-age=63072000; includeSubDomains; preload\"",
+"kind": "http",
+"references": [
+"RFC 6797",
+"https://developer.mozilla.org/docs/Web/HTTP/Headers/Strict-Transport-Security"
+]
+},
+"suppressed": false
+},
+{
+"id": "missing-content-security-policy",
+"title": "Missing content-security-policy header",
+"severity": "medium",
+"description": "The HTTPS response does not include content-security-policy.",
+"recommendation": "Add a Content-Security-Policy to reduce XSS and injection impact.",
+"evidence": {
+"checked_header": "content-security-policy",
+"known_headers": [
+"content-security-policy",
+"permissions-policy",
+"referrer-policy",
+"strict-transport-security",
+"x-content-type-options",
+"x-frame-options"
+]
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Start with a strict Content-Security-Policy, then loosen as needed",
+"snippet": "Content-Security-Policy: default-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'\n\n# Deploy in report-only mode first to find breakage:\nContent-Security-Policy-Report-Only: default-src 'self'; report-uri /csp-report",
+"kind": "http",
+"references": [
+"https://developer.mozilla.org/docs/Web/HTTP/Headers/Content-Security-Policy"
+]
+},
+"suppressed": false
+},
+{
+"id": "missing-x-content-type-options",
+"title": "Missing x-content-type-options header",
+"severity": "low",
+"description": "The HTTPS response does not include x-content-type-options.",
+"recommendation": "Add X-Content-Type-Options: nosniff.",
+"evidence": {
+"checked_header": "x-content-type-options",
+"known_headers": [
+"content-security-policy",
+"permissions-policy",
+"referrer-policy",
+"strict-transport-security",
+"x-content-type-options",
+"x-frame-options"
+]
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Add the x-content-type-options header",
+"snippet": "x-content-type-options: nosniff\n\n# nginx\nadd_header x-content-type-options \"nosniff\" always;",
+"kind": "http",
+"references": [
+"https://owasp.org/www-project-secure-headers/"
+]
+},
+"suppressed": false
+},
+{
+"id": "missing-x-frame-options",
+"title": "Missing x-frame-options header",
+"severity": "low",
+"description": "The HTTPS response does not include x-frame-options.",
+"recommendation": "Add X-Frame-Options or frame-ancestors to reduce clickjacking risk.",
+"evidence": {
+"checked_header": "x-frame-options",
+"known_headers": [
+"content-security-policy",
+"permissions-policy",
+"referrer-policy",
+"strict-transport-security",
+"x-content-type-options",
+"x-frame-options"
+]
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Add the x-frame-options header",
+"snippet": "x-frame-options: SAMEORIGIN\n\n# nginx\nadd_header x-frame-options \"SAMEORIGIN\" always;",
+"kind": "http",
+"references": [
+"https://owasp.org/www-project-secure-headers/"
+]
+},
+"suppressed": false
+},
+{
+"id": "missing-referrer-policy",
+"title": "Missing referrer-policy header",
+"severity": "low",
+"description": "The HTTPS response does not include referrer-policy.",
+"recommendation": "Add Referrer-Policy to limit sensitive URL leakage.",
+"evidence": {
+"checked_header": "referrer-policy",
+"known_headers": [
+"content-security-policy",
+"permissions-policy",
+"referrer-policy",
+"strict-transport-security",
+"x-content-type-options",
+"x-frame-options"
+]
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Add the referrer-policy header",
+"snippet": "referrer-policy: strict-origin-when-cross-origin\n\n# nginx\nadd_header referrer-policy \"strict-origin-when-cross-origin\" always;",
+"kind": "http",
+"references": [
+"https://owasp.org/www-project-secure-headers/"
+]
+},
+"suppressed": false
+},
+{
+"id": "missing-permissions-policy",
+"title": "Missing permissions-policy header",
+"severity": "low",
+"description": "The HTTPS response does not include permissions-policy.",
+"recommendation": "Add Permissions-Policy to restrict browser features.",
+"evidence": {
+"checked_header": "permissions-policy",
+"known_headers": [
+"content-security-policy",
+"permissions-policy",
+"referrer-policy",
+"strict-transport-security",
+"x-content-type-options",
+"x-frame-options"
+]
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Add the permissions-policy header",
+"snippet": "permissions-policy: geolocation=(), microphone=(), camera=()\n\n# nginx\nadd_header permissions-policy \"geolocation=(), microphone=(), camera=()\" always;",
+"kind": "http",
+"references": [
+"https://owasp.org/www-project-secure-headers/"
+]
+},
+"suppressed": false
+},
+{
+"id": "no-security-txt",
+"title": "No security.txt published",
+"severity": "info",
+"description": "The site does not publish a /.well-known/security.txt contact policy (RFC 9116).",
+"recommendation": "Publish a security.txt with a security contact and disclosure policy.",
+"evidence": {
+"url": "https://example.com/.well-known/security.txt"
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Publish /.well-known/security.txt",
+"snippet": "# https://example.com/.well-known/security.txt\nContact: mailto:security@example.com\nExpires: 2027-01-01T00:00:00Z\nPolicy: https://example.com/security-policy\nPreferred-Languages: en",
+"kind": "text",
+"references": [
+"RFC 9116"
+]
+},
+"suppressed": false
+},
+{
+"id": "mta-sts-missing",
+"title": "MTA-STS is not configured",
+"severity": "info",
+"description": "The domain does not publish MTA-STS, so sending servers cannot require TLS for inbound mail.",
+"recommendation": "Publish an MTA-STS policy to require TLS for inbound email.",
+"evidence": {
+"present": false,
+"record": null,
+"status": "ok"
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Publish MTA-STS: a DNS record plus a policy file served over HTTPS",
+"snippet": "# 1) DNS TXT record\n_mta-sts.example.com.    IN  TXT  \"v=STSv1; id=20260101000000\"\n\n# 2) https://mta-sts.example.com/.well-known/mta-sts.txt\nversion: STSv1\nmode: enforce\nmx: mail.example.com\nmax_age: 604800",
+"kind": "dns",
+"references": [
+"RFC 8461"
+]
+},
+"suppressed": false
+},
+{
+"id": "tls-rpt-missing",
+"title": "No SMTP TLS Reporting (TLS-RPT)",
+"severity": "info",
+"description": "No TLS-RPT record is published, so you receive no reports about inbound TLS failures.",
+"recommendation": "Publish a TLS-RPT record to receive inbound SMTP TLS failure reports.",
+"evidence": {
+"present": false,
+"record": null,
+"status": "ok"
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Publish a TLS-RPT record to receive inbound TLS failure reports",
+"snippet": "_smtp._tls.example.com.    IN  TXT  \"v=TLSRPTv1; rua=mailto:tlsrpt@example.com\"",
+"kind": "dns",
+"references": [
+"RFC 8460"
+]
+},
+"suppressed": false
+},
+{
+"id": "bimi-missing",
+"title": "No BIMI record published",
+"severity": "info",
+"description": "DMARC is enforced but no BIMI record is published, so your logo will not show in supporting inboxes.",
+"recommendation": "Publish a BIMI record (and a VMC) to display your brand logo in supporting mail clients.",
+"evidence": {
+"present": false,
+"record": null,
+"status": "ok"
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Publish a BIMI record pointing at your logo",
+"snippet": "default._bimi.example.com.    IN  TXT  \"v=BIMI1; l=https://example.com/bimi-logo.svg; a=https://example.com/vmc.pem\"\n# The logo must be a square SVG Tiny PS; a VMC (a=) is required by Gmail and others.",
+"kind": "dns",
+"references": [
+"https://bimigroup.org/"
+]
+},
+"suppressed": false
+},
+{
+"id": "caa-missing",
+"title": "No CAA records",
+"severity": "low",
+"description": "Without CAA records, any certificate authority may issue certificates for the domain.",
+"recommendation": "Publish CAA records naming only the CAs you use.",
+"evidence": {
+"present": false,
+"records": [],
+"status": "ok"
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Restrict certificate issuance with CAA records",
+"snippet": "example.com.    IN  CAA  0 issue \"letsencrypt.org\"\nexample.com.    IN  CAA  0 issuewild \";\"\nexample.com.    IN  CAA  0 iodef \"mailto:security@example.com\"\n# List every CA you actually use; the wildcard \";\" forbids wildcard issuance.",
+"kind": "dns",
+"references": [
+"RFC 8659"
+]
+},
+"suppressed": false
+},
+{
+"id": "dane-missing",
+"title": "DANE/TLSA is not configured",
+"severity": "info",
+"description": "DNSSEC is enabled but no TLSA record is published, so DANE is not pinning the certificate.",
+"recommendation": "Publish a TLSA record at _443._tcp to pin the certificate via DANE.",
+"evidence": {
+"present": false,
+"records": [],
+"status": "ok"
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Publish a TLSA record (requires DNSSEC)",
+"snippet": "_443._tcp.example.com.    IN  TLSA  3 1 1 <sha256-of-the-cert-public-key>\n# 3 1 1 = DANE-EE, SubjectPublicKeyInfo, SHA-256. Generate the hash from your leaf cert.",
+"kind": "dns",
+"references": [
+"RFC 6698"
+]
+},
+"suppressed": false
+},
+{
+"id": "subdomains-discovered",
+"title": "1 subdomain(s) found in certificate transparency logs",
+"severity": "info",
+"description": "Certificate transparency logs publicly record every hostname issued a certificate. These make up the attack surface beyond the scanned host.",
+"recommendation": "Review the list and retire or protect any host that should not be public.",
+"evidence": {
+"count": 1,
+"sample": [
+"www.example.com"
+],
+"source": "certificate transparency, passive DNS"
+},
+"confidence": "confirmed",
+"remediation": null,
+"suppressed": false
+},
+{
+"id": "lookalike-domains",
+"title": "16 lookalike domain(s) are registered",
+"severity": "low",
+"description": "Domains that closely resemble yours are registered and resolve. These are commonly used for phishing and brand impersonation.",
+"recommendation": "Monitor the closest variants, defensively register the riskiest, and watch for abuse.",
+"evidence": {
+"domains": [
+"e-xample.com",
+"eample.com",
+"eaxmple.com",
+"eexample.com",
+"ex-ample.com",
+"examle.com",
+"examlpe.com",
+"exammple.com",
+"examp-le.com",
+"exampe.com",
+"exampel.com",
+"exampl.com",
+"exampl3.com",
+"example.co",
+"example.net",
+"example.org"
+]
+},
+"confidence": "confirmed",
+"remediation": {
+"title": "Defend against lookalike domains",
+"snippet": "# Registered lookalikes found:\n  - e-xample.com\n  - eample.com\n  - eaxmple.com\n  - eexample.com\n  - ex-ample.com\n  - examle.com\n  - examlpe.com\n  - exammple.com\n  - examp-le.com\n  - exampe.com\n\n# 1. Monitor new registrations and certificates that mimic your brand.\n# 2. Defensively register the closest variants.\n# 3. Report active phishing to the registrar and Google Safe Browsing.",
+"kind": "text",
+"references": []
+},
+"suppressed": false
+}
+]
+}

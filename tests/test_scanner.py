@@ -108,3 +108,60 @@ def test_scan_domain_reports_progress(monkeypatch):
     assert "Technology fingerprint" in labels
     assert "IP intelligence (geo, ASN)" in labels
     assert len(labels) >= 10
+
+
+def _stub_all_probes(monkeypatch):
+    """Patch every probe to a benign offline default; tests override what they need."""
+    p = "sentineldeck.scanner."
+    monkeypatch.setattr(p + "resolve_domain", lambda domain: {"resolved": True, "addresses": []})
+    monkeypatch.setattr(
+        p + "fetch_headers",
+        lambda domain, timeout=10: {"reachable": True, "headers": {}, "cookies": []},
+    )
+    monkeypatch.setattr(p + "check_http_redirect", lambda domain, timeout=10: {})
+    monkeypatch.setattr(p + "check_security_txt", lambda domain, timeout=10: {})
+    monkeypatch.setattr(p + "inspect_tls", lambda domain, timeout=10: {"valid": True})
+    monkeypatch.setattr(p + "analyze_email_security", lambda domain, resolver=None: {"mx": {"present": False}})
+    monkeypatch.setattr(p + "analyze_dns_hygiene", lambda domain, resolver=None: {})
+    monkeypatch.setattr(p + "analyze_domain_intel", lambda domain, timeout=10: {"status": "error"})
+    monkeypatch.setattr(
+        p + "discover_subdomains",
+        lambda domain, timeout=10, host_fetcher=None: {"status": "skipped", "subdomains": []},
+    )
+    monkeypatch.setattr(p + "fetch_page", lambda domain, timeout=10: {"reachable": True, "headers": {}, "body": ""})
+    monkeypatch.setattr(p + "trace_redirects", lambda domain, timeout=10: {"hops": [], "count": 0, "downgrade": False})
+    monkeypatch.setattr(p + "detect_typosquats", lambda domain, resolver=None: {"status": "ok", "registered": []})
+    monkeypatch.setattr(p + "check_reputation", lambda domain: {"status": "error", "listed": False})
+    monkeypatch.setattr(p + "archive_history", lambda domain: {"status": "ok", "snapshots": 0})
+    monkeypatch.setattr(p + "analyze_tls_config", lambda domain: {"status": "error", "weak_protocols": []})
+    monkeypatch.setattr(p + "check_blocklists", lambda domain: {"status": "ok", "results": [], "blocked_security": []})
+    monkeypatch.setattr(p + "analyze_web_content", lambda domain, page: {"status": "ok"})
+    monkeypatch.setattr(p + "analyze_ip_intel", lambda ip, timeout=10: {"status": "error"})
+
+
+def test_scan_survives_a_probe_that_raises(monkeypatch):
+    _stub_all_probes(monkeypatch)
+
+    def boom(domain, timeout=10):
+        raise RuntimeError("tls exploded")
+
+    monkeypatch.setattr("sentineldeck.scanner.inspect_tls", boom)
+
+    report = scan_domain("example.com")  # must not raise
+
+    assert report.checks["tls"] == {"status": "error", "error": "tls exploded"}
+    assert "email_security" in report.checks
+    assert report.grade in {"A", "B", "C", "D", "F"}
+
+
+def test_scan_survives_a_post_step_that_raises(monkeypatch):
+    _stub_all_probes(monkeypatch)
+
+    def boom(domain, page):
+        raise RuntimeError("web content exploded")
+
+    monkeypatch.setattr("sentineldeck.scanner.analyze_web_content", boom)
+
+    report = scan_domain("example.com")  # must not raise
+
+    assert report.checks["web_content"] == {"status": "error"}

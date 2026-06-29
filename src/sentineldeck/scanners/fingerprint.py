@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 import urllib.error
 import urllib.request
+from typing import Any
 
 USER_AGENT = "SentinelDeck/0.1"
 MAX_BODY = 400_000  # cap the HTML we read; enough for <head> and script tags
@@ -37,7 +38,7 @@ def fetch_page(domain: str, timeout: int = 10) -> dict:
 
 # Each signature matches on response headers and/or HTML. ``version_header`` and
 # ``version_html`` optionally extract a version from the first capture group.
-SIGNATURES = [
+SIGNATURES: list[dict[str, Any]] = [
     {"name": "WordPress", "category": "CMS",
      "html": [r"wp-content/", r"wp-includes/", r'name=["\']generator["\'] content=["\']WordPress'],
      "version_html": r'content=["\']WordPress\s+([\d.]+)'},

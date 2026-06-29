@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 from sentineldeck import __version__, tui
 from sentineldeck.alerts import send_alert, should_alert
@@ -192,7 +193,7 @@ def main(argv: list[str] | None = None) -> int:
         if tracker:
             tracker.finish()
 
-        saved: list[tuple[str, str]] = []
+        saved: list[tuple[str, str | Path]] = []
         if args.output:
             saved.append(("Report", write_json_report(report, args.output)))
         if args.html:

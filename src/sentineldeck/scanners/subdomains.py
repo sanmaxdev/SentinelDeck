@@ -109,7 +109,7 @@ def discover_subdomains(
     optional passive-DNS source when ``host_fetcher`` is supplied."""
     entries = fetcher(domain, timeout)
     ct_ok = isinstance(entries, list)
-    names = _hostnames(entries, domain) if ct_ok else set()
+    names = _hostnames(entries, domain) if isinstance(entries, list) else set()
     sources = ["certificate transparency"] if ct_ok else []
 
     extra = host_fetcher(domain, timeout) if host_fetcher else None

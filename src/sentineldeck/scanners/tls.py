@@ -29,7 +29,7 @@ def _extended_key_usage(cert: x509.Certificate) -> list[str]:
         ext = cert.extensions.get_extension_for_oid(ExtensionOID.EXTENDED_KEY_USAGE)
     except x509.ExtensionNotFound:
         return []
-    return [_EKU_NAMES.get(oid.dotted_string, oid.dotted_string) for oid in ext.value]
+    return [_EKU_NAMES.get(oid.dotted_string, oid.dotted_string) for oid in ext.value]  # type: ignore[attr-defined]
 
 
 def classify_verify_error(exc: ssl.SSLCertVerificationError) -> str:
@@ -47,12 +47,12 @@ def classify_verify_error(exc: ssl.SSLCertVerificationError) -> str:
 
 def _common_name(name: x509.Name) -> str | None:
     values = name.get_attributes_for_oid(NameOID.COMMON_NAME)
-    return values[0].value if values else None
+    return values[0].value if values else None  # type: ignore[return-value]
 
 
 def _organization(name: x509.Name) -> str | None:
     values = name.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
-    return values[0].value if values else None
+    return values[0].value if values else None  # type: ignore[return-value]
 
 
 def _public_key_summary(cert: x509.Certificate) -> tuple[str | None, int | None]:
@@ -75,7 +75,7 @@ def _san_dns_names(cert: x509.Certificate) -> list[str]:
         ext = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
     except x509.ExtensionNotFound:
         return []
-    return ext.value.get_values_for_type(x509.DNSName)
+    return ext.value.get_values_for_type(x509.DNSName)  # type: ignore[attr-defined]
 
 
 def hostname_matches(hostname: str, dns_names: list[str]) -> bool:

@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [1.2.2] - 2026-06-29
+
+### Fixed
+
+- A single failing probe no longer aborts the whole scan. Every surface now
+  degrades to an error state on its own, so one broken check can never take down
+  the rest of the report.
+
+### Changed
+
+- Added type checking (mypy), test-coverage reporting, and a headless
+  dashboard-render check to the test suite and CI, so a missing UI function or a
+  type error is caught before release rather than after.
+
 ## [1.2.1] - 2026-06-29
 
 ### Fixed
