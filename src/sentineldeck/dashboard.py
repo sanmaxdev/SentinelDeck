@@ -12,6 +12,7 @@ self-contained: no Node build, no extra dependencies. The server binds to
 from __future__ import annotations
 
 import json
+import sys
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -98,10 +99,39 @@ def _make_handler(timeout: int):
     return DashboardHandler
 
 
+def _bind(host: str, port: int, timeout: int) -> ThreadingHTTPServer | None:
+    """Try to bind the dashboard server to ``port``; return None if unavailable."""
+    try:
+        return ThreadingHTTPServer((host, port), _make_handler(timeout))
+    except OSError:
+        # Port in use by another app, or blocked/reserved by the OS (e.g. Windows
+        # WinError 10013 / Hyper-V reserved ranges). Caller falls back.
+        return None
+
+
 def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True, timeout: int = 10) -> int:
     """Run the dashboard server until interrupted. Returns a process exit code."""
-    httpd = ThreadingHTTPServer((host, port), _make_handler(timeout))
-    url = f"http://{host}:{port}"
+    # The requested port may be taken or blocked, so fall back to other ports and
+    # finally an OS-assigned one (0) instead of crashing with a stack trace.
+    candidates: list[int] = []
+    for candidate in (port, 8765, 8780, 8800, 8888, 9000, 0):
+        if candidate not in candidates:
+            candidates.append(candidate)
+
+    httpd = next((s for s in (_bind(host, c, timeout) for c in candidates) if s is not None), None)
+    if httpd is None:
+        print(
+            f"Could not start the dashboard: no free port was available "
+            f"(tried {', '.join(str(c) for c in candidates if c)}). "
+            f"Free a port or pass --port.",
+            file=sys.stderr,
+        )
+        return 1
+
+    actual = httpd.server_address[1]
+    if actual != port:
+        print(f"Port {port} was unavailable, so the dashboard is using port {actual} instead.")
+    url = f"http://{host}:{actual}"
     print(f"SentinelDeck dashboard running at {url}")
     print("Press Ctrl+C to stop.")
     if open_browser:

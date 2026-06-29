@@ -17,6 +17,45 @@ def _get(port, path):
         return response.status, response.read().decode("utf-8")
 
 
+def test_bind_returns_none_when_port_is_forbidden(monkeypatch):
+    real = dashboard.ThreadingHTTPServer
+
+    def fake(addr, handler):
+        if addr[1] == 8765:
+            raise PermissionError("WinError 10013")  # simulate a blocked port
+        return real(addr, handler)
+
+    monkeypatch.setattr(dashboard, "ThreadingHTTPServer", fake)
+
+    assert dashboard._bind("127.0.0.1", 8765, 5) is None
+    httpd = dashboard._bind("127.0.0.1", 0, 5)
+    assert httpd is not None
+    httpd.server_close()
+
+
+def test_serve_falls_back_to_a_free_port(monkeypatch):
+    real = dashboard.ThreadingHTTPServer
+    bound = {}
+
+    def stop(self):  # so serve() returns instead of blocking on serve_forever
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(real, "serve_forever", stop)
+
+    def fake(addr, handler):
+        if addr[1] == 8765:
+            raise PermissionError("WinError 10013")  # default port blocked
+        server = real(addr, handler)
+        bound["port"] = server.server_address[1]
+        return server
+
+    monkeypatch.setattr(dashboard, "ThreadingHTTPServer", fake)
+
+    rc = dashboard.serve(port=8765, open_browser=False)
+    assert rc == 0
+    assert bound["port"] != 8765  # fell back to a working port
+
+
 def test_dashboard_serves_static_assets():
     httpd, port = _start_server()
     try:

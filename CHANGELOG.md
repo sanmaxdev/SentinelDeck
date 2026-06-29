@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [2.2.1] - 2026-06-29
+
+### Fixed
+
+- `sentineldeck dashboard` no longer crashes with a stack trace when its port is
+  already in use or blocked by the OS (for example Windows error 10013). It now
+  falls back to another free port — and finally an OS-assigned one — and prints
+  the address it actually bound.
+
 ## [2.2.0] - 2026-06-29
 
 ### Added
