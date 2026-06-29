@@ -361,6 +361,24 @@
 ],
 "truncated": false
 },
+"internetdb": {
+"status": "ok",
+"ports": [80, 443, 8080],
+"vulns": ["CVE-2021-44228", "CVE-2019-0001"],
+"kev": ["CVE-2021-44228"],
+"cpes": ["cpe:/a:nginx:nginx"],
+"tags": ["cdn"],
+"hostnames": ["host.example.com"]
+},
+"saas_stack": {
+"status": "ok",
+"count": 3,
+"services": [
+{"name": "Atlassian", "category": "Engineering", "evidence": "TXT"},
+{"name": "Google Workspace", "category": "Email", "evidence": "MX"},
+{"name": "Shopify", "category": "E-commerce", "evidence": "TXT"}
+]
+},
 "typosquatting": {
 "status": "ok",
 "checked": 30,

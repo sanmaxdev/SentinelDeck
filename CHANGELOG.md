@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/), and the project aims
 to follow semantic versioning once it reaches 1.0.
 
+## [2.1.0] - 2026-06-29
+
+### Added
+
+- Exposure and CVE intelligence. Every scan now consults Shodan InternetDB (free,
+  keyless) for the resolved host: the open ports, service tags, and the published
+  CVEs already associated with it, returned passively without touching the host.
+  Those CVEs are cross-referenced against the CISA Known Exploited Vulnerabilities
+  catalog, so any that are confirmed exploited in the wild are highlighted and
+  raise a scored finding. A new dashboard card shows the exposure surface with the
+  KEV CVEs called out.
+- SaaS footprint decoding. The TXT verification tokens, SPF includes, and MX hosts
+  a domain publishes are decoded into the products the organisation actually uses
+  (Microsoft 365, Google Workspace, Atlassian, Shopify, Stripe, Jamf, Loom, and
+  many more) and shown in a new dashboard card — intelligence read out of records
+  the scan already collected.
+
 ## [2.0.0] - 2026-06-29
 
 ### Added

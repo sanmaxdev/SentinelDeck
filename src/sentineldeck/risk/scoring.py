@@ -233,6 +233,32 @@ def build_findings(checks: dict) -> list[Finding]:
             evidence={"ports": risky_ports},
         ))
 
+    exposure = checks.get("internetdb", {})
+    exposure_cves = exposure.get("vulns", []) if exposure.get("status") == "ok" else []
+    if exposure_cves:
+        kev = exposure.get("kev") or []
+        if kev:
+            detail = (
+                f"; {len(kev)} of them are on CISA's Known Exploited Vulnerabilities list "
+                f"({', '.join(kev[:8])}), which are confirmed exploited in the wild."
+            )
+        else:
+            detail = ". These are derived from passive service fingerprints, so confirm the affected versions."
+        findings.append(Finding(
+            id="known-cves-on-host",
+            title=f"Host exposes services with {len(exposure_cves)} known CVE(s)",
+            severity="high" if kev else "medium",
+            description=(
+                f"Shodan InternetDB associates {len(exposure_cves)} published CVE(s) "
+                f"with services observed on this host{detail}"
+            ),
+            recommendation=(
+                "Patch or upgrade the affected services, prioritising any CVE on the CISA KEV list."
+            ),
+            evidence={"cves": exposure_cves[:50], "kev": kev, "ports": exposure.get("ports", [])},
+            confidence="confirmed" if kev else "indeterminate",
+        ))
+
     blocked = checks.get("blocklists", {}).get("blocked_security", [])
     if blocked:
         findings.append(Finding(

@@ -23,11 +23,14 @@ from sentineldeck.scanners.http_headers import (
     missing_security_headers,
     trace_redirects,
 )
+from sentineldeck.scanners.internetdb import analyze_internetdb
 from sentineldeck.scanners.ip_intel import analyze_ip_intel
 from sentineldeck.scanners.ip_rdap import analyze_ip_rdap
+from sentineldeck.scanners.kev import filter_kev
 from sentineldeck.scanners.ports import scan_ports
 from sentineldeck.scanners.reputation import check_reputation
 from sentineldeck.scanners.reverse_ip import reverse_ip
+from sentineldeck.scanners.saas_stack import detect_saas
 from sentineldeck.scanners.subdomains import discover_subdomains, fetch_hostsearch
 from sentineldeck.scanners.takeover import detect_takeovers
 from sentineldeck.scanners.target import classify_target, is_private_ip
@@ -61,6 +64,7 @@ STAGE_LABELS = {
     "ip_intel": "IP intelligence (geo, ASN)",
     "ip_rdap": "Network allocation (RDAP)",
     "reverse_ip": "Reverse IP (hosted domains)",
+    "internetdb": "Exposure & CVEs (Shodan InternetDB)",
 }
 
 
@@ -114,6 +118,9 @@ def _summary(name: str, result) -> str:
             return f" :: {str(tag)[:28]}" if tag else ""
         if name == "reverse_ip":
             return f" :: {result.get('count', 0)} domain(s)"
+        if name == "internetdb":
+            np_, nv = len(result.get("ports") or []), len(result.get("vulns") or [])
+            return f" :: {np_} port(s), {nv} CVE(s)" if (np_ or nv) else " :: clean"
         if name == "reputation":
             return " :: listed" if (result.get("listed") or result.get("malicious")) else " :: clean"
     except Exception:  # noqa: BLE001 - a summary must never break a scan
@@ -251,8 +258,32 @@ def scan_domain(
         "CAA": dns_hygiene_result.get("caa", {}).get("records", []),
     }
 
+    # Passive exposure + known CVEs for the resolved host, plus the SaaS footprint
+    # the domain leaks through its TXT / SPF / MX records.
+    if addresses:
+        internetdb = _safe(
+            lambda: analyze_internetdb(addresses[0], timeout),
+            {"status": "error", "ports": [], "vulns": []},
+        )
+    else:
+        internetdb = {"status": "skipped", "ports": [], "vulns": []}
+    if internetdb.get("vulns"):
+        internetdb["kev"] = filter_kev(internetdb["vulns"])
+    _notify("Exposure & CVEs (Shodan InternetDB)" + _summary("internetdb", internetdb))
+
+    spf_record = (results["email"].get("spf") or {}).get("record") or ""
+    spf_includes = [t.split(":", 1)[1] for t in spf_record.split() if t.lower().startswith("include:")]
+    saas = _safe(
+        lambda: detect_saas(dns_records.get("TXT"), spf_includes, dns_records.get("MX")),
+        {"status": "ok", "count": 0, "services": []},
+    )
+    if saas.get("count"):
+        _notify(f"SaaS footprint :: {saas['count']} service(s)")
+
     report.checks = {
         "dns": results["dns"],
+        "internetdb": internetdb,
+        "saas_stack": saas,
         "http": http,
         "missing_security_headers": missing_security_headers(headers),
         "header_issues": evaluate_headers(headers, cookies),
@@ -326,6 +357,7 @@ def scan_ip(
             futures["ip_rdap"] = pool.submit(analyze_ip_rdap, ip)
             futures["reverse_ip"] = pool.submit(reverse_ip, ip)
             futures["reputation"] = pool.submit(check_reputation, ip)
+            futures["internetdb"] = pool.submit(analyze_internetdb, ip, timeout)
         if active:
             futures["ports"] = pool.submit(scan_ports, ip)
 
@@ -365,11 +397,16 @@ def scan_ip(
         if ptr:
             ip_intel["hostnames"] = ptr
 
+    internetdb = results.get("internetdb", {"status": "skipped", "ports": [], "vulns": []})
+    if internetdb.get("vulns"):
+        internetdb["kev"] = filter_kev(internetdb["vulns"])
+
     report.checks = {
         "target_type": "ip",
         # The target is already an address, so resolution is trivially satisfied;
         # this keeps the scoring engine from flagging it as "unresolved".
         "dns": {"resolved": True, "addresses": [ip]},
+        "internetdb": internetdb,
         "http": http,
         "missing_security_headers": missing_security_headers(headers),
         "header_issues": evaluate_headers(headers, cookies),

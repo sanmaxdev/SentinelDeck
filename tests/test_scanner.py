@@ -138,6 +138,7 @@ def _stub_all_probes(monkeypatch):
     monkeypatch.setattr(p + "check_blocklists", lambda domain: {"status": "ok", "results": [], "blocked_security": []})
     monkeypatch.setattr(p + "analyze_web_content", lambda domain, page: {"status": "ok"})
     monkeypatch.setattr(p + "analyze_ip_intel", lambda ip, timeout=10: {"status": "error"})
+    monkeypatch.setattr(p + "analyze_internetdb", lambda ip, timeout=10: {"status": "ok", "ports": [], "vulns": []})
 
 
 def test_scan_survives_a_probe_that_raises(monkeypatch):

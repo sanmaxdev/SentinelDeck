@@ -110,6 +110,8 @@ function render(report) {
   $("#cards").innerHTML = [
     cardPasses(checks.passes),
     cardStack(checks.technologies),
+    cardExposure(checks.internetdb),
+    cardSaaS(checks.saas_stack),
     cardReputation(checks.reputation),
     cardBlocklists(checks.blocklists),
     cardTLS(checks.tls),
@@ -542,6 +544,31 @@ function cardIpRdap(d) {
     (d.country ? row("Country", esc(d.country)) : "") +
     (d.registered ? row("Registered", esc(d.registered)) : "") +
     (d.abuse_email ? row("Abuse contact", esc(d.abuse_email), "warn") : ""));
+}
+
+function cardExposure(e) {
+  if (!e || e.status !== "ok") return "";
+  const ports = e.ports || [], vulns = e.vulns || [], kev = new Set(e.kev || []);
+  if (!ports.length && !vulns.length) return "";
+  const portTags = ports.map((p) => `<span class="tag">${esc(p)}</span>`).join("");
+  const cveTags = vulns.slice(0, 30).map((c) => kev.has(c)
+    ? `<span class="tag" style="border-color:var(--high);color:var(--high)">${esc(c)} &#9888;</span>`
+    : `<span class="tag">${esc(c)}</span>`).join("");
+  const tagTags = (e.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("");
+  return card("Exposure &amp; CVEs // InternetDB",
+    (ports.length ? row("Open ports", esc(ports.length)) : "") +
+    (portTags ? `<div class="tags" style="margin-top:8px">${portTags}</div>` : "") +
+    (vulns.length ? row("Known CVEs", esc(vulns.length), kev.size ? "bad" : "warn") : "") +
+    (kev.size ? row("Actively exploited (KEV)", esc(kev.size), "bad") : "") +
+    (cveTags ? `<div class="tags" style="margin-top:8px">${cveTags}</div>` : "") +
+    (tagTags ? `<div class="tags" style="margin-top:8px">${tagTags}</div>` : ""));
+}
+
+function cardSaaS(s) {
+  if (!s || s.status !== "ok" || !s.count) return "";
+  const items = s.services.map((v) =>
+    `<div class="row"><span class="k">${esc(v.name)}</span><span class="v muted">${esc(v.category)}</span></div>`).join("");
+  return card(`SaaS footprint [${s.count}]`, items);
 }
 
 function cardReverseIp(r) {

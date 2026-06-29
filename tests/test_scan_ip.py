@@ -29,6 +29,10 @@ def _stub_ip_probes(monkeypatch):
     monkeypatch.setattr(p + "reverse_ip", lambda ip: {"status": "ok", "count": 2, "domains": ["a.com", "b.com"]})
     monkeypatch.setattr(p + "check_reputation", lambda ip: {"status": "ok", "listed": False})
     monkeypatch.setattr(p + "analyze_web_content", lambda host, page: {"status": "ok"})
+    monkeypatch.setattr(
+        p + "analyze_internetdb",
+        lambda ip, timeout=10: {"status": "ok", "ports": [443], "vulns": ["CVE-2021-44228"]},
+    )
 
 
 def test_scan_ip_builds_ip_report(monkeypatch):
@@ -39,6 +43,9 @@ def test_scan_ip_builds_ip_report(monkeypatch):
     assert report.checks["target_type"] == "ip"
     assert report.checks["ip_rdap"]["abuse_email"] == "abuse@test.net"
     assert report.checks["reverse_ip"]["count"] == 2
+    # InternetDB CVEs are KEV-flagged and raise a scored finding
+    assert report.checks["internetdb"]["kev"] == ["CVE-2021-44228"]
+    assert any(f.id == "known-cves-on-host" and f.severity == "high" for f in report.findings)
     # domain-only surfaces are not part of an IP report
     assert "subdomains" not in report.checks
     assert "email_security" not in report.checks
