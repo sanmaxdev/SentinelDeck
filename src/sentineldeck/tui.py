@@ -54,7 +54,7 @@ def _enable_windows_vt() -> None:
     try:
         import ctypes
 
-        kernel32 = ctypes.windll.kernel32
+        kernel32 = getattr(ctypes, "windll").kernel32  # windll is Windows-only
         for handle_id in (-11, -12):  # STD_OUTPUT_HANDLE, STD_ERROR_HANDLE
             handle = kernel32.GetStdHandle(handle_id)
             mode = ctypes.c_uint32()
