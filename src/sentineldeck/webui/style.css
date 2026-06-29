@@ -147,9 +147,10 @@ main { max-width: 1280px; margin: 0 auto; padding: 26px 24px; position: relative
 }
 .fix-label { color: var(--red); font-weight: 700; font-size: 11px; letter-spacing: 0.1em; margin: 12px 0 4px; }
 
-/* Cards grid with razor-thin dividers */
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
-.card { background: var(--bg); padding: 18px 20px; position: relative; }
+/* Cards in a masonry column flow: each card is its own height, packed tightly,
+   so a tall card (e.g. DNS records) never stretches its short neighbours. */
+.cards { column-width: 330px; column-gap: 14px; }
+.card { break-inside: avoid; -webkit-column-break-inside: avoid; margin: 0 0 14px; border: 1px solid var(--border); background: var(--bg); padding: 18px 20px; position: relative; }
 .card h3 { font-size: 11px; letter-spacing: 0.16em; margin: 0 0 14px; color: var(--red); font-weight: 700; text-transform: uppercase; }
 .card h3::before { content: "// "; color: var(--dim); }
 .row { display: flex; justify-content: space-between; gap: 14px; padding: 5px 0; border-bottom: 1px dotted var(--border); font-size: 12.5px; letter-spacing: 0.03em; }

@@ -13,6 +13,8 @@ to follow semantic versioning once it reaches 1.0.
   TLS protocol, subdomains found, lookalikes registered, server location, and
   more), with a running elapsed clock and a blinking cursor, so you can watch the
   scan work instead of staring at a spinner.
+- Packed the dashboard result cards into a masonry layout, so a tall card (like
+  full DNS records) no longer stretches its shorter neighbours into empty space.
 
 ## [1.2.2] - 2026-06-29
 
