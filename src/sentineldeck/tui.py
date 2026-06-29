@@ -49,12 +49,12 @@ def init_stream() -> None:
 
 
 def _enable_windows_vt() -> None:
-    if os.name != "nt":
+    if sys.platform != "win32":  # sys.platform lets the type checker skip this on Linux
         return
     try:
         import ctypes
 
-        kernel32 = getattr(ctypes, "windll").kernel32  # windll is Windows-only
+        kernel32 = ctypes.windll.kernel32
         for handle_id in (-11, -12):  # STD_OUTPUT_HANDLE, STD_ERROR_HANDLE
             handle = kernel32.GetStdHandle(handle_id)
             mode = ctypes.c_uint32()
