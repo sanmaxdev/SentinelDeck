@@ -20,7 +20,7 @@ Prefer a permanent install? `pip install -U sentineldeck`, then `sentineldeck sc
 Prefer a UI? `sentineldeck dashboard` opens an interactive web dashboard in your browser (local only, no extra dependencies).
 
 <p align="center">
-  <img src="assets/demo.svg" alt="SentinelDeck scanning a domain: grade, findings, and a copy-paste fix" width="720">
+  <img src="assets/dashboard-findings.png" alt="SentinelDeck: a risk grade and prioritised findings for example.com" width="820">
 </p>
 
 <table>
@@ -74,11 +74,18 @@ It is built for the people who need that picture fast: an agency qualifying a
 prospect, a consultant producing a client report, or a small team checking its
 own footprint.
 
-<p align="center">
-  <img src="assets/dashboard.svg" alt="SentinelDeck web dashboard" width="840">
-</p>
+<p align="center"><code>sentineldeck dashboard</code> opens an interactive web dashboard in your browser — local only, zero extra dependencies. Point it at a domain or a bare IP; a live telemetry console streams each check as it runs, then the results render as a grid of cards.</p>
 
-<p align="center"><code>sentineldeck dashboard</code> opens this in your browser. Local only, zero extra dependencies, with a live remediation simulator that recomputes the grade as you tick fixes.</p>
+<table>
+  <tr>
+    <td width="50%"><img src="assets/dashboard-home.png" alt="Dashboard home: map a domain or IP's public attack surface"><br><sub>Domain or IP — one box.</sub></td>
+    <td width="50%"><img src="assets/dashboard-console.png" alt="Live telemetry console streaming each check as the scan runs"><br><sub>Live telemetry as it scans.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/dashboard-overview.png" alt="Results: passes, technology stack, exposure and CVEs, DNS, subdomains, and lookalike domains"><br><sub>Results as a grid of cards.</sub></td>
+    <td width="50%"><img src="assets/dashboard-intel.png" alt="Deep intel: TLS certificate, server-location map, and the ASN network footprint"><br><sub>Deep intel: TLS, geo, ASN footprint.</sub></td>
+  </tr>
+</table>
 
 ## Contents
 
