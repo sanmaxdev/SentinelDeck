@@ -16,11 +16,41 @@ USER_AGENT = "SentinelDeck/0.1"
 
 # Best-effort DKIM selector probes. Absence is inconclusive, so DKIM findings
 # are always reported with indeterminate confidence.
+# Only static, publicly documented selectors. Skip per-tenant tokens
+# (Amazon SES, Postmark dates, HubSpot hs1-<id>, etc.).
 COMMON_DKIM_SELECTORS = (
-    "default", "google", "selector1", "selector2", "k1", "k2",
-    "mail", "dkim", "s1", "s2", "mandrill", "zoho", "protonmail", "fm1",
+    "default",       # generic / self-hosted
+    "mail",          # generic / Brevo legacy
+    "mail2",         # Brevo / Sendinblue rotation pair
+    "dkim",          # generic / self-hosted
+    "google",        # Google Workspace
+    "google2",       # Google Workspace key rotation
+    "selector1",     # Microsoft 365
+    "selector2",     # Microsoft 365 key rotation
+    "k1",            # Mailchimp
+    "k2",            # Mailchimp
+    "k3",            # Mailchimp
+    "mte1",          # Mailchimp Transactional
+    "mte2",          # Mailchimp Transactional
+    "mandrill",      # legacy Mailchimp Transactional
+    "s1",            # SendGrid
+    "s2",            # SendGrid
+    "zoho",          # Zoho Mail
+    "zmail",         # Zoho Mail common default
+    "protonmail",    # Proton Mail
+    "protonmail2",   # Proton Mail key rotation
+    "protonmail3",   # Proton Mail key rotation
+    "fm1",           # Fastmail
+    "fm2",           # Fastmail
+    "fm3",           # Fastmail
+    "sig1",          # Apple iCloud custom domain
+    "s1024",         # legacy Yahoo / AOL
+    "s2048",         # legacy Yahoo / AOL
+    "zendesk1",      # Zendesk
+    "zendesk2",      # Zendesk
+    "brevo1",        # Brevo
+    "brevo2",        # Brevo
 )
-
 
 def extract_spf_policy(record: str | None) -> str | None:
     if not record:
