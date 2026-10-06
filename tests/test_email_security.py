@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from sentineldeck.risk.scoring import build_findings
 from sentineldeck.scanners.dns_lookup import parse_mx_records, parse_txt_records
 from sentineldeck.scanners.email_security import (
+    COMMON_DKIM_SELECTORS,
     analyze_email_security,
     count_spf_lookups,
     dkim_key_bits,
@@ -203,3 +204,8 @@ def test_email_findings_are_indeterminate_when_dns_errors():
 
     assert findings["spf-missing"].confidence == "indeterminate"
     assert findings["dmarc-missing"].confidence == "indeterminate"
+
+def test_common_dkim_selectors_are_unique_and_include_documented_providers():
+    assert len(COMMON_DKIM_SELECTORS) == len(set(COMMON_DKIM_SELECTORS))
+    for name in ("k3", "mte1", "protonmail2", "fm3", "sig1", "zendesk1", "google2"):
+        assert name in COMMON_DKIM_SELECTORS
